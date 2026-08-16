@@ -27,7 +27,7 @@ cd /home/linh/Projects/cozmars-os
 chmod +x scripts/pack-fat-docker.sh
 ./scripts/pack-fat-docker.sh
 # → dist/cozmars-1.6.0-armhf-bundle.tgz
-# RAM container mặc định 512m (như Zero 2W). OOM: MEM_LIMIT=1g ./scripts/pack-fat-docker.sh
+# Dùng RAM/CPU laptop (nhanh). Chỉ khi muốn giả 512MB: MEM_LIMIT=512m ./scripts/pack-fat-docker.sh
 ```
 
 ### B. Có Pi Zero 2W / Pi ARM

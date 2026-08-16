@@ -12,12 +12,12 @@
 #   ./scripts/pack-fat-docker.sh              # Zero 2W 32-bit (mặc định)
 #   ARCH=aarch64 ./scripts/pack-fat-docker.sh  # nếu dùng Pi OS 64-bit
 #
-# Output: dist/cozmars-<ver>-armhf-bundle.tgz
+#   MEM_LIMIT=512m ./scripts/pack-fat-docker.sh   # tuỳ chọn: giả RAM Zero 2W (chậm/OOM dễ hơn)
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ARCH_TARGET="${ARCH:-armhf}"
-# Giới hạn RAM gần Zero 2W (512 MB); tắt: MEM_LIMIT= ./scripts/pack-fat-docker.sh
-MEM_LIMIT="${MEM_LIMIT:-512m}"
+# Build trên laptop: mặc định không giới hạn RAM (nhanh). Muốn giả Zero 2W: MEM_LIMIT=512m
+MEM_LIMIT="${MEM_LIMIT:-}"
 case "$ARCH_TARGET" in
   armhf|armv7l)
     PLATFORM="linux/arm/v7"
@@ -60,7 +60,9 @@ mkdir -p "$OUT"
 DOCKER_MEM=()
 if [[ -n "${MEM_LIMIT}" ]]; then
   DOCKER_MEM=(--memory "$MEM_LIMIT" --memory-swap "$MEM_LIMIT")
-  echo "[pack-fat-docker] RAM cap $MEM_LIMIT (gần Zero 2W) — OOM: MEM_LIMIT=1g $0"
+  echo "[pack-fat-docker] RAM cap $MEM_LIMIT"
+else
+  echo "[pack-fat-docker] không giới hạn RAM (build nhanh trên laptop)"
 fi
 
 echo "[pack-fat-docker] Zero2W-like: platform=$PLATFORM image=$IMAGE"
