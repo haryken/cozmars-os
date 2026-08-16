@@ -1,31 +1,6 @@
 {
-  "placeholder": true,
-  "events": [
-    "Play__Robot_Vic_Sfx__Attention_Device_Loop_Play",
-    "Play__Robot_Vic_Sfx__Blink",
-    "Play__Robot_Vic_Sfx__Camera_Focus",
-    "Play__Robot_Vic_Sfx__Cant_Do",
-    "Play__Robot_Vic_Sfx__Concentrate_Fail",
-    "Play__Robot_Vic_Sfx__Concentrate_Success",
-    "Play__Robot_Vic_Sfx__Cube_Search_Ping",
-    "Play__Robot_Vic_Sfx__Distress_Alert",
-    "Play__Robot_Vic_Sfx__Emote_Cant_Do_That_1",
-    "Play__Robot_Vic_Sfx__Emote_Curious_Short",
-    "Play__Robot_Vic_Sfx__Emote_Happy_Short",
-    "Play__Robot_Vic_Sfx__Emote_Sad_Short",
-    "Play__Robot_Vic_Sfx__Fist_Bump",
-    "Play__Robot_Vic_Sfx__Head_Down_Short_Neutral",
-    "Play__Robot_Vic_Sfx__Head_Petting_Level_01",
-    "Play__Robot_Vic_Sfx__Head_Up_Short_Neutral",
-    "Play__Robot_Vic_Sfx__Lift_Down_Short",
-    "Play__Robot_Vic_Sfx__Lift_Up_Short",
-    "Play__Robot_Vic_Sfx__Tread_Curious",
-    "Play__Robot_Vic_Sfx__Tread_Happy",
-    "Play__Robot_Vic_Sfx__Tread_Sad",
-    "Play__Robot_Vic_Sfx__Wake_Word_Fail",
-    "Play__Robot_Vic_Sfx__Wake_Word_Off",
-    "Play__Robot_Vic_Sfx__Wake_Word_On",
-    "Play__Robot_Vic_Sfx__Wake_Word_Success"
-  ],
-  "note": "silent placeholders; replace via scripts/extract-vector-sfx.sh"
+  "placeholder": false,
+  "source": "wire-os anki/victor/EXTERNALS/victor-audio-assets victor_linux IMA-ADPCM",
+  "extract": "python3 scripts/extract_vector_sfx.py",
+  "note": "Real Vector SFX; variants are Play__….2.wav"
 }
