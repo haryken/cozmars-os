@@ -1,3 +1,7 @@
+<!-- Languages: [Tiếng Việt](README.md) · [English](README.en.md) · [中文](README.zh.md) -->
+
+**Language / Ngôn ngữ / 语言:** [Tiếng Việt](README.md) · [English](README.en.md) · [中文](README.zh.md)
+
 # Cozmars OS
 
 Phần mềm robot **Cozmars V2** trên Raspberry Pi Zero 2W — một process, tám engine.
