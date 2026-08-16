@@ -1,8 +1,7 @@
 """Khám phá kiểu Vector Exploring (behaviorExploring.cpp).
 
-Chu kỳ: get-in (ExploringLookAround) → drive tới điểm ngẫu nhiên ~0.3–0.5 m
-→ dừng, quay 45–140° + SFX → đôi khi examine obstacle (huh/scan) → lặp.
-Stim (Mood.stimulated) chọn SFX *_Stim và độ sáng mắt.
+Chu kỳ: get-in → drive ~0.3–0.5 m → look → (huh nếu sonar) → lặp.
+SFX chỉ khi cảm biến: vực (IR), vật cản mới (sonar cạnh lên). Không SFX theo đồng hồ DRIVE/LOOK.
 """
 
 from __future__ import annotations
@@ -25,14 +24,14 @@ class Explore:
         self._last_face = ""
         self._drive_n = 0
         self._stim_t = 0.0
+        self._was_range = False
 
     def start(self) -> None:
         if self.mood:
             self.mood.event("explore_start")
         self._begin("get_in", 1.7)
         self._drive_n = 0
-        self._sfx("explore")
-        self._sfx("look_around")
+        self._was_range = False
         self._face()
         print(f"[ENGINE] explore GET-IN  stim={self._stim():.2f} happy={self._happy():.2f}", flush=True)
 
@@ -41,9 +40,12 @@ class Explore:
         dt = 0.05
         if self.mood:
             self.mood.decay(dt, exploring=True)
-        if sensors.get("inRange") and self.phase not in ("examine", "escape"):
-            self._begin_examine()
+        in_range = bool(sensors.get("inRange"))
+        if in_range and self.phase not in ("examine", "escape", "cliff_hold"):
+            self._begin_examine(sfx=not self._was_range)
+            self._was_range = True
             return
+        self._was_range = in_range
 
         elapsed = now - self._t0
         if self.phase == "get_in":
@@ -98,7 +100,6 @@ class Explore:
         self._curve = random.uniform(-0.16, 0.16)
         # Vector maxSearchRadius 0.5 m; sim v≈0.10 m/s @ motor 0.62 → 1.8–4.2 s
         self._begin("drive", random.uniform(1.8, 4.2))
-        self._sfx("explore")
         print(
             f"[ENGINE] explore DRIVE #{self._drive_n} {self._dur:.1f}s  stim={self._stim():.2f}",
             flush=True,
@@ -110,24 +111,18 @@ class Explore:
         self._turn = 1.0 if random.random() > 0.5 else -1.0
         # 45–140° @ ~90°/s → 0.6–1.8 s
         self._begin("look", random.uniform(0.7, 1.8))
-        self._sfx("look_around")
-        if self._stim() >= 0.45:
-            self._mood_sfx("happy")
-        else:
-            self._mood_sfx("curious")
         print(f"[ENGINE] explore LOOK  stim={self._stim():.2f}", flush=True)
 
     def _after_look(self) -> None:
         self.robot.speed(0.0, 0.0)
-        if random.random() < 0.22:
-            self._mood_sfx("happy" if self._happy() >= 0.35 else "sad")
         self._begin_drive()
 
-    def _begin_examine(self) -> None:
+    def _begin_examine(self, *, sfx: bool = False) -> None:
         if self.mood:
             self.mood.event("examine_obstacle")
         self._begin("examine", 1.15)
-        self._sfx("explore_huh")
+        if sfx:
+            self._sfx("explore_huh")
         if self.anim:
             self.anim.set_expression("surprised")
         print(f"[ENGINE] explore HUH obstacle  stim={self._stim():.2f}", flush=True)
@@ -146,7 +141,6 @@ class Explore:
         if not keep_turn or self._turn == 0:
             self._turn = 1.0 if random.random() > 0.5 else -1.0
         self._begin("escape", random.uniform(0.7, 1.2))
-        self._sfx("explore_scan")
 
     def _cliff(self) -> None:
         self.notify_cliff("both")
@@ -155,13 +149,13 @@ class Explore:
         if not self.anim:
             return
         if self._stim() >= 0.45 and action in ("explore", "look_around"):
-            self.anim.play_mood(action, self._stim())
+            self.anim.play_mood(action, self._stim(), tag="sys")
         else:
-            self.anim.play_action(action)
+            self.anim.play_action(action, tag="sys")
 
     def _mood_sfx(self, kind: str) -> None:
         if self.anim:
-            self.anim.play_mood(kind, self._stim())
+            self.anim.play_mood(kind, self._stim(), tag="emote")
 
     def _face(self, throttle: bool = False) -> None:
         if not self.anim or not self.mood:

@@ -19,21 +19,58 @@ ROOT = Path(__file__).resolve().parents[3]
 CATALOG = Path(__file__).with_name("sfx_catalog.json")
 ACTION = Path(__file__).with_name("action_sfx.json")
 
+# Scan/tread/huh lúc khám phá — lặp mỗi 2–4s, dễ khó chịu. Wake/show không mute.
+DEFAULT_MUTE = ("Gazing_Scan",)
+SYS_ACTIONS = frozenset(
+    {"explore", "look_around", "explore_huh", "explore_scan", "obstacle", "cliff", "idle"}
+)
+WAKE_ACTIONS = frozenset({"wake", "wake_fail", "boot"})
+SHOW_ACTIONS = frozenset({"firetruck", "dance", "fistbump", "hello", "nod"})
+
+
+def sfx_tag(event: str, action: str | None = None) -> str:
+    a = action or ""
+    e = event or ""
+    if a in WAKE_ACTIONS or "Wake_Word" in e:
+        return "wake"
+    if a in SHOW_ACTIONS or "Distress_Alert" in e or "Fist_Bump" in e:
+        return "show"
+    if a in SYS_ACTIONS or "Gazing_Scan" in e or "Tread_" in e:
+        return "sys"
+    if "Emote_" in e:
+        return "emote"
+    return "sfx"
+
 
 class AnimEngine:
     name = "anim"
 
-    def __init__(self, robot) -> None:
+    def __init__(self, robot, env: dict | None = None) -> None:
         self.robot = robot
         self.expression = "auto"
         self._catalog = json.loads(CATALOG.read_text(encoding="utf-8")) if CATALOG.exists() else {}
         self._action = json.loads(ACTION.read_text(encoding="utf-8")) if ACTION.exists() else {}
         self._lock = threading.Lock()
         self.volume = 0.8
+        extra: list[str] = []
+        if env and "sfx_mute" in env:
+            if isinstance(env.get("sfx_mute"), list):
+                extra = [str(x) for x in env["sfx_mute"] if x]
+        else:
+            extra = list(DEFAULT_MUTE)
+        env_csv = os.environ.get("COZMARS_SFX_MUTE", "")
+        if env_csv.strip():
+            extra.extend(p.strip() for p in env_csv.split(",") if p.strip())
+        self._mute = tuple(dict.fromkeys(extra))
         n_wav = len(list((ROOT / "assets" / "sfx").glob("*.wav")))
         print(
             f"[ANIM] sfx catalog {len(self._catalog)}  actions {len(self._action)}  "
             f"wav={n_wav}  (thiếu file → synth + đẩy loa sim)",
+            flush=True,
+        )
+        print(
+            f"[ANIM] SFX nhãn [sys]=khám phá [wake]=đánh thức [show]=xe/nhảy [emote]=cảm xúc  "
+            f"mute={list(self._mute)}",
             flush=True,
         )
         self._try_opencv()
@@ -58,7 +95,7 @@ class AnimEngine:
         self.set_expression(expression_for(action))
         self.play_action(action)
 
-    def play_action(self, action: str) -> None:
+    def play_action(self, action: str, tag: str | None = None) -> None:
         evs = self._action.get(action) or []
         if not evs:
             if action in self._catalog:
@@ -66,9 +103,9 @@ class AnimEngine:
         if not evs:
             return
         ev = random.choice(evs)
-        self.play_sfx(ev)
+        self.play_sfx(ev, tag=tag or sfx_tag(ev, action))
 
-    def play_mood(self, kind: str, stim: float = 0.0) -> None:
+    def play_mood(self, kind: str, stim: float = 0.0, tag: str | None = None) -> None:
         """SFX vui/buồn/curious — bản *_Stim khi stimulation cao (như Vector)."""
         high = stim >= 0.45
         mapping = {
@@ -96,23 +133,36 @@ class AnimEngine:
         }
         ev = mapping.get(kind)
         if ev:
-            self.play_sfx(ev)
+            self.play_sfx(ev, tag=tag or sfx_tag(ev, kind))
             return
-        self.play_action(kind)
+        self.play_action(kind, tag=tag)
 
-    def play_sfx(self, event_name: str) -> None:
+    def play_sfx(self, event_name: str, tag: str | None = None) -> None:
         if self.volume <= 0.01:
             return
+        label = tag or sfx_tag(event_name)
+        if any(m and m in event_name for m in self._mute):
+            print(f"[ANIM] SFX MUTE [{label}] {event_name}", flush=True)
+            return
         wav_name = self._catalog.get(event_name, event_name if event_name.endswith(".wav") else event_name + ".wav")
-        path = ROOT / "assets" / "sfx" / wav_name
+        path = self._pick_wav(ROOT / "assets" / "sfx", wav_name)
         src = "file"
-        data = self._audible_wav(path)
+        data = self._audible_wav(path) if path else b""
         if not data:
             src = "synth"
             data = synth.render(event_name, self.volume)
-        print(f"[ANIM] SFX {event_name} ({src} {len(data)}B)", flush=True)
+        print(f"[ANIM] SFX [{label}] {event_name} ({src} {len(data)}B)", flush=True)
         self.robot.speaker_power(True)
         threading.Thread(target=self._mix, args=(event_name, data), daemon=True).start()
+
+    def _pick_wav(self, folder: Path, wav_name: str) -> Path | None:
+        stem = wav_name[:-4] if wav_name.endswith(".wav") else wav_name
+        cands = [folder / f"{stem}.wav"]
+        cands.extend(sorted(folder.glob(f"{stem}.[0-9]*.wav")))
+        exist = [p for p in cands if p.exists()]
+        if not exist:
+            return None
+        return random.choice(exist)
 
     def _audible_wav(self, path: Path) -> bytes:
         """Bỏ placeholder im lặng (peak=0, ~5 KB) — dùng synth."""

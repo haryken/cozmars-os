@@ -415,6 +415,9 @@ async def chat(brain, text: str) -> dict:
 
     if _dialog_active or _turn_lock.locked():
         print("[CLOUD] Xiaozhi bỏ qua wake — đang trong phiên", flush=True)
+        from . import google_tts
+
+        google_tts.sim_mic_listen(False, idle=True, reason="xiaozhi busy")
         return {"text": "", "played": False, "path": "xiaozhi-busy"}
 
     utterance = strip_wake(text)
@@ -433,6 +436,7 @@ async def chat(brain, text: str) -> dict:
     async with _turn_lock:
         if _dialog_active:
             print("[CLOUD] Xiaozhi bỏ qua wake — đang trong phiên", flush=True)
+            google_tts.sim_mic_listen(False, idle=True, reason="xiaozhi busy")
             return {"text": "", "played": False, "path": "xiaozhi-busy"}
         _dialog_active = True
         _session_bye = False
@@ -452,7 +456,12 @@ async def chat(brain, text: str) -> dict:
                 ota_hello()
                 try:
                     _session_bye = False
-                    reply, played = await _dialog(brain, load_cfg(), None if audio else utterance)
+                    drop = "closing" in str(exc).lower() or "closed" in str(exc).lower()
+                    if drop:
+                        print("[CLOUD] Xiaozhi nối lại — nghe tiếp, không gửi lại xin chào", flush=True)
+                        reply, played = await _dialog(brain, load_cfg(), None, resume=True)
+                    else:
+                        reply, played = await _dialog(brain, load_cfg(), None if audio else utterance)
                 except Exception as exc2:  # noqa: BLE001
                     print(f"[CLOUD] Xiaozhi retry fail: {exc2}", flush=True)
                     return {"text": f"Không nối được Xiaozhi: {exc2}", "played": False}
@@ -584,7 +593,7 @@ def _rms16(pcm: bytes) -> float:
     return (total / n) ** 0.5
 
 
-async def _dialog(brain, cfg: dict[str, Any], first_text: str | None) -> tuple[str, bool]:
+async def _dialog(brain, cfg: dict[str, Any], first_text: str | None, *, resume: bool = False) -> tuple[str, bool]:
     from . import google_tts
 
     global _session_bye
@@ -592,15 +601,27 @@ async def _dialog(brain, cfg: dict[str, Any], first_text: str | None) -> tuple[s
     played_any = False
     # WireOS EnsureConnected: reuse WSS across listen rounds. Do not close on wake.
     google_tts.sim_mic_listen(False, reason="đang nối cloud")
-    seed = (first_text or "").strip() or "xin chào"
-    print(f"[CLOUD] Xiaozhi wake → listen detect {seed!r}", flush=True)
-    reply, played = await _ws_turn(brain, cfg, seed)
-    if reply:
-        parts.append(reply)
-    played_any |= played
-    if _session_bye:
-        print("[CLOUD] Xiaozhi tạm biệt — đóng mic, chờ wake", flush=True)
-        return " ".join(parts).strip(), played_any
+    if resume:
+        print("[CLOUD] Xiaozhi resume listen sau WSS đứt", flush=True)
+        reply, played, heard = await _audio_turn(brain, cfg, use_pre=False)
+        if reply:
+            parts.append(reply)
+        played_any |= played
+        if _session_bye or not heard:
+            if _session_bye:
+                print("[CLOUD] Xiaozhi tạm biệt — đóng mic, chờ wake", flush=True)
+            return " ".join(parts).strip(), played_any
+        print("[CLOUD] Xiaozhi relisten after playback", flush=True)
+    else:
+        seed = (first_text or "").strip() or "xin chào"
+        print(f"[CLOUD] Xiaozhi wake → listen detect {seed!r}", flush=True)
+        reply, played = await _ws_turn(brain, cfg, seed)
+        if reply:
+            parts.append(reply)
+        played_any |= played
+        if _session_bye:
+            print("[CLOUD] Xiaozhi tạm biệt — đóng mic, chờ wake", flush=True)
+            return " ".join(parts).strip(), played_any
     for n in range(20):
         if _session_bye:
             break
@@ -915,6 +936,13 @@ async def _collect_reply(brain, ws, hint: str, first_wait: float = 8.0, total_wa
             if _is_bye(str(data.get("text") or "")):
                 bye_pending = True
                 print("[CLOUD] Xiaozhi STT tạm biệt — đợi TTS rồi đóng phiên", flush=True)
+            elif brain is not None:
+                from .matcher import match_show
+
+                intent = match_show(str(data.get("text") or ""))
+                if intent:
+                    print(f"[CLOUD] STT → {intent} (không đợi MCP)", flush=True)
+                    brain.handle_intent(intent)
         elif typ == "llm" and data.get("text"):
             got_any = True
             last_rx = time.monotonic()

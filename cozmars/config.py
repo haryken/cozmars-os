@@ -33,6 +33,9 @@ def load() -> Tuple[Dict[str, Any], Dict[str, Any], Path]:
     if src_env.get("cliff_stop") and not env.get("cliff_stop"):
         env["cliff_stop"] = True
         save_env(env)
+    if "sfx_mute" not in env:
+        env["sfx_mute"] = ["Gazing_Scan"]
+        save_env(env)
     if src_conf.get("cliff") and not conf.get("cliff"):
         conf["cliff"] = src_conf["cliff"]
         conf_dst.write_text(json.dumps(conf, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

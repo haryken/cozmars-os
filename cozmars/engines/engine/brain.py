@@ -26,6 +26,8 @@ class BrainEngine:
         self.explore = Explore(robot, anim, self.mood)
         self.cliff = CliffReactor(robot, anim, self.mood)
         self._intent_q: asyncio.Queue[tuple[str, dict]] = asyncio.Queue()
+        self.pet_explore = True
+        self._show_at: dict[str, float] = {}
 
     def handle_intent(self, name: str, params: dict | None = None) -> None:
         self._intent_q.put_nowait((name, params or {}))
@@ -43,7 +45,7 @@ class BrainEngine:
         self.handle_intent(mapped)
 
     async def run(self) -> None:
-        print("[ENGINE] brain start — boot → idle", flush=True)
+        print("[ENGINE] brain start — boot → khám phá", flush=True)
         self.anim.from_action("boot")
         while self.running:
             await self._drain_intents()
@@ -57,30 +59,37 @@ class BrainEngine:
                 self.request(str(intent))
             elapsed = time.monotonic() - self.t0
             cliff_on = bool(self.env.get("cliff_stop", True))
-            was_cliff = self.cliff.owning
-            if self.cliff.tick(sensors, cliff_on):
-                if self.mode == "explore" and self.cliff.just_started:
-                    self.explore.notify_cliff(self.cliff.side)
-            elif was_cliff and self.mode == "explore":
-                self.explore.after_cliff(self.cliff.side)
-            elif self.mode == "explore":
-                self.explore.tick(elapsed, sensors)
-            elif sensors.get("inRange") and self.mode in ("boot", "idle"):
-                self.anim.from_action("obstacle")
-                self.robot.speed(-0.22, 0.42)
-                self.robot.head(12)
-            elif self.mode == "boot":
+            if self.mode == "boot":
                 self._boot(elapsed)
-            elif self.mode == "idle":
-                self._idle(elapsed)
-            elif self.mode == "show":
-                pass
+            elif self.mode == "listen" or getattr(self.robot, "listening", False):
+                self.robot.speed(0, 0)
+                self.robot.head(14)
+            else:
+                was_cliff = self.cliff.owning
+                if self.cliff.tick(sensors, cliff_on):
+                    if self.mode == "explore" and self.cliff.just_started:
+                        self.explore.notify_cliff(self.cliff.side)
+                elif was_cliff and self.mode == "explore":
+                    self.explore.after_cliff(self.cliff.side)
+                elif self.mode == "explore":
+                    self.explore.tick(elapsed, sensors)
+                elif sensors.get("inRange") and self.mode in ("idle",):
+                    self.anim.from_action("obstacle")
+                    self.robot.speed(-0.22, 0.42)
+                    self.robot.head(12)
+                elif self.mode == "idle":
+                    self._idle(elapsed)
+                elif self.mode == "show":
+                    pass
             await asyncio.sleep(0.05)
 
     async def _sleep_motion(self, seconds: float) -> None:
         t0 = time.monotonic()
         on = bool(self.env.get("cliff_stop", True))
         while time.monotonic() - t0 < seconds and self.running:
+            if getattr(self.robot, "listening", False):
+                self.robot.stop()
+                return
             s = self.robot.sensors()
             if self.cliff.tick(s, on):
                 while self.running and self.cliff.tick(self.robot.sensors(), on):
@@ -102,10 +111,9 @@ class BrainEngine:
         elif t < 2.5:
             self.robot.lift(0.05)
         else:
-            print("[ENGINE] boot xong — idle", flush=True)
-            self.mode = "idle"
-            self.t0 = time.monotonic()
-            self.anim.from_action("idle")
+            print("[ENGINE] boot xong — khám phá", flush=True)
+            self.pet_explore = True
+            self._resume_pet(restart=True)
 
     def _idle(self, t: float) -> None:
         self.mood.decay(0.05, exploring=False)
@@ -122,6 +130,45 @@ class BrainEngine:
                 print(f"[ENGINE] intent chưa map {name}", flush=True)
                 continue
             await self._do(action, params)
+
+    def interrupt_for_wake(self) -> None:
+        was = self.mode
+        if self.cliff.owning:
+            self.cliff.phase = "idle"
+            self.cliff.owning = False
+        self.robot.stop()
+        self.robot.listening = True
+        self.mode = "listen"
+        self.t0 = time.monotonic()
+        print(f"[ENGINE] wake — đứng lại (đang {was})", flush=True)
+
+    def finish_wake(self) -> None:
+        self.robot.listening = False
+        if self.mode != "listen":
+            return
+        if self.pet_explore:
+            self._resume_pet(restart=False)
+            print("[ENGINE] hết nói — khám phá tiếp", flush=True)
+        else:
+            self.mode = "idle"
+            self.t0 = time.monotonic()
+            self.robot.stop()
+            print("[ENGINE] wake xong — idle", flush=True)
+
+    def _resume_pet(self, *, restart: bool = False) -> None:
+        self.mode = "explore"
+        self.t0 = time.monotonic()
+        if restart or self.explore.phase == "idle":
+            self.explore.start()
+
+    def _show_recent(self, name: str, window: float) -> bool:
+        now = time.monotonic()
+        last = self._show_at.get(name, 0.0)
+        if now - last < window:
+            print(f"[ENGINE] {name} skip — vừa chạy {now - last:.1f}s trước", flush=True)
+            return True
+        self._show_at[name] = now
+        return False
 
     async def _do(self, action: str, params: dict) -> None:
         self.mode = "show"
@@ -168,9 +215,13 @@ class BrainEngine:
             await shows.lift_show(self.robot, self.anim)
             self.mode = "idle"
         elif action == "firetruck":
-            self.mood.event("firetruck")
-            await shows.firetruck(self.robot, self.anim)
-            self.mode = "idle"
+            if self._show_recent("firetruck", 14.0):
+                self.mode = "idle"
+            else:
+                self.mood.event("firetruck")
+                print("[ENGINE] firetruck — chạy show 12s", flush=True)
+                await shows.firetruck(self.robot, self.anim)
+                self.mode = "idle"
         elif action == "dance":
             await shows.dance(self.robot, self.anim)
             self.mode = "idle"
@@ -236,6 +287,15 @@ class BrainEngine:
         else:
             print(f"[ENGINE] action {action} no-op", flush=True)
             self.mode = "idle"
+        if action == "halt":
+            self.pet_explore = False
+            self.robot.listening = False
+        elif getattr(self.robot, "listening", False):
+            self.mode = "listen"
+        elif action == "explore":
+            self.pet_explore = True
+        elif self.mode == "idle" and self.pet_explore:
+            self._resume_pet(restart=False)
         self.t0 = time.monotonic()
 
     def stop(self) -> None:

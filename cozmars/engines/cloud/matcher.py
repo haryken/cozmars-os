@@ -25,12 +25,25 @@ PHRASES = {
     "lại đây": "intent_imperative_come",
     "dừng": "intent_imperative_halt",
     "xe cứu hỏa": "intent_play_firetruck",
+    "xe cứu hoả": "intent_play_firetruck",
+    "cứu hỏa": "intent_play_firetruck",
+    "cứu hoả": "intent_play_firetruck",
     "còi xe": "intent_play_firetruck",
     "nhảy": "intent_imperative_dance",
     "hát đi": "intent_imperative_sing",
     "tìm khối": "intent_imperative_findcube",
     "chơi blackjack": "intent_play_blackjack",
 }
+
+
+SHOW_INTENTS = frozenset(
+    {
+        "intent_play_firetruck",
+        "intent_imperative_dance",
+        "intent_imperative_sing",
+        "intent_play_fistbump",
+    }
+)
 
 
 def match(text: str) -> str | None:
@@ -43,3 +56,9 @@ def match(text: str) -> str | None:
         if k in t:
             return v
     return None
+
+
+def match_show(text: str) -> str | None:
+    """Show trong phiên Xiaozhi — không cần đợi MCP (LLM hay quên self.show.*)."""
+    intent = match(text)
+    return intent if intent in SHOW_INTENTS else None

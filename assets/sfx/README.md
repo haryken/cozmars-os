@@ -1,9 +1,13 @@
 # SFX Vector
 
-Extract từ robot Vector (`Play__Robot_Vic_Sfx__*`) → wav 22050 mono, commit vào đây.
+Lấy từ WireOS `anki/victor/EXTERNALS/victor-audio-assets` (Wwise `.wem`, codec IMA trong WAV).
 
-Xem `docs/PI_ZERO2W_AUTONOMOUS.md` mục 14 và `cozmars/engines/anim/sfx_catalog.json`.
+```bash
+python3 scripts/extract_vector_sfx.py
+# hoặc
+python3 scripts/extract_vector_sfx.py /path/to/victor-audio-assets
+```
 
-Thiếu file: OS **synth** SFX (siren / vui / buồn / đập tay) rồi đẩy ra loa sim (cùng đường TTS). Log `[ANIM] SFX … (synth …B)`.
+Ghi `assets/sfx/Play__Robot_Vic_Sfx__*.wav` 22050 Hz mono s16. Biến thể `_01/_02` → `.2.wav`, `.3.wav` (OS chọn ngẫu nhiên).
 
-Thay bằng wav thật: `scripts/extract-vector-sfx.sh /path/to/cozmo_resources/sound`.
+Log `[ANIM] SFX … (file …B)` = wav Vector. `(synth …B)` = chưa có file.

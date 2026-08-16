@@ -55,7 +55,7 @@ async def _amain(args: argparse.Namespace) -> None:
     kind, url = _resolve_hal(args)
     robot = build_robot(kind, url, conf)
     camera = CameraEngine(sim_url=url)
-    anim = AnimEngine(robot)
+    anim = AnimEngine(robot, env)
     rpc = SwitchboardEngine(robot)
     brain = BrainEngine(robot, anim, env)
     cloud = CloudEngine(brain, env)

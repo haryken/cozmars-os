@@ -26,7 +26,7 @@ class Deferred:
     def take(self, name: str) -> None:
         self.pending = name
         self.mic_open = False
-        print(f"[MCP] deferred {name} — mic closed until wake", flush=True)
+        print(f"[MCP] queue {name}", flush=True)
 
     def deliver(self, brain) -> None:
         if self.pending:

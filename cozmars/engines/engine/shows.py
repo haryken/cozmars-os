@@ -38,11 +38,17 @@ async def lift_show(robot, anim) -> None:
 async def firetruck(robot, anim) -> None:
     print("[SHOW] firetruck ~12s", flush=True)
     anim.from_action("firetruck")
+    t_clear = time.monotonic()
+    while _over_cliff(robot) and time.monotonic() - t_clear < 0.8:
+        robot.speed(-0.42, -0.42)
+        await asyncio.sleep(0.05)
+    robot.stop()
     t0 = time.monotonic()
     last_sfx = t0
     aborted = False
     while time.monotonic() - t0 < 12:
-        if _over_cliff(robot):
+        # 0.5s đầu: không hủy nếu IR còn dính mép sau lúc lùi
+        if time.monotonic() - t0 >= 0.5 and _over_cliff(robot):
             print("[SHOW] firetruck abort — cliff", flush=True)
             aborted = True
             robot.stop()
@@ -52,7 +58,7 @@ async def firetruck(robot, anim) -> None:
         robot.head(20 if int(t * 4) % 2 == 0 else -10)
         now = time.monotonic()
         if now - last_sfx >= 1.4:
-            anim.play_sfx("Play__Robot_Vic_Sfx__Distress_Alert")
+            anim.play_sfx("Play__Robot_Vic_Sfx__Distress_Alert", tag="show")
             last_sfx = now
         await asyncio.sleep(0.18)
     robot.stop()

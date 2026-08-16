@@ -14,6 +14,7 @@ class RobotEngine:
         self.hal = hal
         self.last_left = 0.0
         self.last_right = 0.0
+        self.listening = False
 
     def speed(self, left: float, right: float) -> None:
         self.last_left = left
