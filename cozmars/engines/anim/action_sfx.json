@@ -1,0 +1,80 @@
+{
+  "boot": [
+    "Play__Robot_Vic_Sfx__Wake_Word_On"
+  ],
+  "shutdown": [
+    "Play__Robot_Vic_Sfx__Attention_Device_Loop_Play"
+  ],
+  "forward": [
+    "Play__Robot_Vic_Sfx__Tread_Happy"
+  ],
+  "backward": [
+    "Play__Robot_Vic_Sfx__Tread_Sad"
+  ],
+  "turn_left": [
+    "Play__Robot_Vic_Sfx__Tread_Curious"
+  ],
+  "turn_right": [
+    "Play__Robot_Vic_Sfx__Tread_Curious"
+  ],
+  "head_up": [
+    "Play__Robot_Vic_Sfx__Head_Up_Short_Neutral"
+  ],
+  "head_down": [
+    "Play__Robot_Vic_Sfx__Head_Down_Short_Neutral"
+  ],
+  "lift_up": [
+    "Play__Robot_Vic_Sfx__Lift_Up_Short"
+  ],
+  "lift_down": [
+    "Play__Robot_Vic_Sfx__Lift_Down_Short"
+  ],
+  "touch": [
+    "Play__Robot_Vic_Sfx__Head_Petting_Level_01"
+  ],
+  "sonar_in_range": [
+    "Play__Robot_Vic_Sfx__Cant_Do"
+  ],
+  "search_cube": [
+    "Play__Robot_Vic_Sfx__Cube_Search_Ping"
+  ],
+  "pick_up_cube": [
+    "Play__Robot_Vic_Sfx__Lift_Up_Short"
+  ],
+  "eye_blink": [
+    "Play__Robot_Vic_Sfx__Blink"
+  ],
+  "eye_happy": [
+    "Play__Robot_Vic_Sfx__Emote_Happy_Short"
+  ],
+  "eye_sad": [
+    "Play__Robot_Vic_Sfx__Emote_Sad_Short"
+  ],
+  "eye_surprised": [
+    "Play__Robot_Vic_Sfx__Emote_Curious_Short"
+  ],
+  "eye_angry": [
+    "Play__Robot_Vic_Sfx__Emote_Cant_Do_That_1"
+  ],
+  "wake": [
+    "Play__Robot_Vic_Sfx__Wake_Word_Success"
+  ],
+  "wake_fail": [
+    "Play__Robot_Vic_Sfx__Wake_Word_Fail"
+  ],
+  "firetruck": [
+    "Play__Robot_Vic_Sfx__Distress_Alert"
+  ],
+  "fistbump": [
+    "Play__Robot_Vic_Sfx__Fist_Bump"
+  ],
+  "ota_start": [
+    "Play__Robot_Vic_Sfx__Camera_Focus"
+  ],
+  "ota_ok": [
+    "Play__Robot_Vic_Sfx__Concentrate_Success"
+  ],
+  "ota_fail": [
+    "Play__Robot_Vic_Sfx__Concentrate_Fail"
+  ]
+}

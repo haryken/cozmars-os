@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cài đặt robot</title>
+    <link rel="icon" type="image/svg+xml" href="/static/vector-logo.svg">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-brand-row">
+            <div class="brand">
+                <img class="brand-logo" src="/static/vector-logo.png" width="44" height="44" alt="Cozmars" decoding="async">
+            </div>
+            <button type="button" id="navBurger" class="nav-burger" aria-label="Open navigation" aria-expanded="false" aria-controls="navDrawer">
+                <span class="nav-burger-line" aria-hidden="true"></span>
+                <span class="nav-burger-line" aria-hidden="true"></span>
+                <span class="nav-burger-line" aria-hidden="true"></span>
+            </button>
+        </div>
+        <div class="header-title-row">
+            <h1>Cài đặt robot</h1>
+            <span class="ui-lang-wrap" id="verPill" style="color:#67e8f9;font-size:13px;"></span>
+        </div>
+    </header>
+
+    <div id="navBackdrop" class="nav-backdrop" hidden></div>
+    <aside id="navDrawer" class="nav-drawer" aria-hidden="true" aria-label="Navigation">
+        <div class="nav-drawer-head">
+            <div class="nav-drawer-brand">
+                <img class="brand-logo" src="/static/vector-logo.png" width="40" height="40" alt="Cozmars" decoding="async">
+                <div class="nav-drawer-hello">
+                    <span class="nav-drawer-hello-sub">Xin chào!</span>
+                    <span class="nav-drawer-hello-name">Cozmars</span>
+                </div>
+            </div>
+            <button type="button" id="navDrawerClose" class="nav-drawer-close" aria-label="Close navigation">&times;</button>
+        </div>
+        <nav id="navDrawerList" class="nav-drawer-list" aria-label="Sections"></nav>
+    </aside>
+
+    <nav class="site-nav" aria-label="Sections">
+        <label class="nav-select-wrap" for="navSelect">
+            <span class="nav-select-label">Menu</span>
+            <select id="navSelect">
+                <option value="#about">Giới thiệu</option>
+                <option value="#ota">Cập nhật OS</option>
+                <option value="#xiaozhi">Xiaozhi</option>
+                <option value="#games">Trò chơi</option>
+                <option value="#control">Điều khiển</option>
+            </select>
+        </label>
+        <div class="tabs" role="tablist">
+            <button type="button" class="active" data-target="#about">Giới thiệu</button>
+            <button type="button" data-target="#ota">Cập nhật OS</button>
+            <button type="button" data-target="#xiaozhi">Xiaozhi</button>
+            <button type="button" data-target="#games">Trò chơi</button>
+            <button type="button" data-target="#control">Điều khiển</button>
+        </div>
+    </nav>
+
+    <div id="about" class="container mod-section tab-content active">
+        <h2>Giới thiệu</h2>
+        <div class="help-box">
+            <strong>Cozmars OS</strong>
+            <p>Tám engine · Pi Zero 2W · không Docker. Sim: STT Chrome trên dashboard, chữ gửi lên Xiaozhi cloud.</p>
+        </div>
+        <pre id="aboutj" class="ota-log">đang tải…</pre>
+        <p><a href="/fw/" style="color:#67e8f9">Cal firmware</a> · <a href="/wifi" style="color:#67e8f9">WiFi</a></p>
+    </div>
+
+    <div id="ota" class="container mod-section tab-content">
+        <h2>Cập nhật OS</h2>
+        <div class="help-box">
+            <strong>Cách dùng</strong>
+            <ol>
+                <li>Dán URL file <code>.tgz</code> (ví dụ <code>cozmars-1.6.0.tgz</code>).</li>
+                <li>Bấm <b>Cập nhật từ URL</b>.</li>
+            </ol>
+        </div>
+        <div class="xz-config-fields">
+            <label>URL gói:</label>
+            <input type="text" id="otaurl" placeholder="https://…/cozmars-1.6.0.tgz">
+        </div>
+        <div class="xz-config-actions">
+            <button type="button" onclick="ota()">Cập nhật từ URL</button>
+        </div>
+        <pre id="otalog" class="ota-log">Log cập nhật sẽ hiện ở đây.</pre>
+    </div>
+
+    <div id="xiaozhi" class="container mod-section tab-content">
+        <h2>💜 Xiaozhi AI</h2>
+        <div class="help-box mode-switch-box">
+            <strong>Chế độ nghe lệnh</strong>
+            <p style="margin:8px 0 6px;">Chọn bên dưới — <b>đổi là áp dụng ngay</b> (không cần Lưu).</p>
+            <div class="mode-compare">
+                <div class="mode-card mode-on">
+                    <h4>💜 Xiaozhi</h4>
+                    <ul>
+                        <li>Nói chuyện tự nhiên (VN/EN) với cloud.</li>
+                        <li>LLM / MCP điều khiển robot.</li>
+                        <li>Hiện khối cấu hình Xiaozhi bên dưới.</li>
+                    </ul>
+                </div>
+                <div class="mode-card mode-off">
+                    <h4>🎙 Vosk</h4>
+                    <ul>
+                        <li>STT offline trên robot (thường tiếng Anh).</li>
+                        <li>Xiaozhi cloud tắt; ẩn cấu hình Xiaozhi.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="bot-opt-list xz-mode-radios" style="margin:8px 0 8px;">
+            <label><input type="radio" name="xzListenMode" value="xiaozhi" id="xzModeXiaozhi" onchange="xzOnModeRadio()"> <span>Xiaozhi (cloud chat)</span></label>
+            <label><input type="radio" name="xzListenMode" value="vosk" id="xzModeVosk" onchange="xzOnModeRadio()"> <span>Vosk (lệnh offline)</span></label>
+            <label><input type="radio" name="xzListenMode" value="off" id="xzModeOff" onchange="xzOnModeRadio()"> <span>Tắt</span></label>
+        </div>
+        <div id="xiaozhiStatus" class="xz-status" style="display:none;"></div>
+
+        <div id="xzConfigBlock" class="xz-config-block" style="display:none;">
+            <h3 class="xz-config-title">Cấu hình Xiaozhi</h3>
+            <div class="xz-config-card">
+                <div class="bot-opt-list xz-mode-radios" style="margin:0 0 12px;">
+                    <label>
+                        <input type="radio" name="xzPreset" value="vi_pool" id="xzPresetVi" onchange="xzOnPresetRadio()">
+                        <span><b>Cấu hình tiếng Việt có sẵn</b></span>
+                    </label>
+                    <label>
+                        <input type="radio" name="xzPreset" value="custom" id="xzPresetCustom" checked onchange="xzOnPresetRadio()">
+                        <span><b>Tùy chỉnh</b> — dùng tài khoản Xiaozhi của bạn</span>
+                    </label>
+                </div>
+
+                <div id="xzPoolHelp" class="help-box xz-config-help" style="display:none;">
+                    <p>Chọn cái này rồi <b>đánh thức robot</b> (hey cozmars) là nói chuyện được luôn — không cần mã 6 số.</p>
+                    <p style="margin:10px 0 0; font-size:14px; line-height:1.6;">
+                        ID: <code id="xzPoolMac">—</code><br>
+                        Client: <code id="xzPoolClient">—</code>
+                    </p>
+                </div>
+
+                <div id="xzCustomFields">
+                    <div class="help-box xz-config-help">
+                        <ol>
+                            <li><b>Máy chủ OTA:</b> lần đầu để mặc định <code>https://api.tenclass.net/</code>.</li>
+                            <li><b>WebSocket:</b> ô xám — hệ thống tự lấy từ OTA.</li>
+                            <li><b>Lấy mã 6 số:</b> bấm <b>Lưu &amp; kích hoạt</b>. Robot hiện mã (hoặc báo đã ghép).</li>
+                            <li><b>Ghép trên web:</b> vào <a href="https://xiaozhi.me" target="_blank" rel="noopener">xiaozhi.me</a> → tạo agent → thêm mã 6 số.</li>
+                            <li><b>Mã mới:</b> bấm <b>Lấy mã mới</b>.</li>
+                        </ol>
+                    </div>
+                    <div class="xz-config-fields">
+                        <label>Máy chủ OTA:</label>
+                        <input type="text" id="xzOTABaseURL" placeholder="https://api.tenclass.net/">
+
+                        <label>Đầu cuối WebSocket:</label>
+                        <input type="text" id="xzEndpoint" class="xz-readonly" disabled readonly placeholder="(tự lấy sau Lưu &amp; kích hoạt)">
+
+                        <label>ID thiết bị (MAC):</label>
+                        <input type="text" id="xzDeviceID" placeholder="auto = random MAC" readonly disabled>
+
+                        <label>ID client:</label>
+                        <input type="text" id="xzClientID" placeholder="auto = UUID" readonly disabled>
+                    </div>
+                </div>
+
+                <div class="xz-config-actions">
+                    <button type="button" id="xzSaveActivateBtn" onclick="xzSaveAndActivate()">Lưu &amp; kích hoạt</button>
+                    <button type="button" onclick="xzNewCode()">Lấy mã mới</button>
+                </div>
+                <div id="xzConfigStatus" class="xz-status" style="display:none;"></div>
+                <div id="xzCodeBox" class="xz-code-box" style="display:none;">
+                    <strong>Mã kích hoạt:</strong>
+                    <span id="xzCode" class="xz-code-value"></span>
+                    <p class="xz-code-help">Copy mã này → vào agent trên <a href="https://xiaozhi.me" target="_blank" rel="noopener">xiaozhi.me</a> → thêm thiết bị bằng mã 6 số.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="games" class="container mod-section tab-content">
+        <h2>Trò chơi</h2>
+        <div class="help-box">
+            <strong>Cách dùng</strong>
+            <p>Mở ván mới. Board đầy đủ sẽ hiện khi game engine sẵn sàng.</p>
+        </div>
+        <div class="xz-config-actions">
+            <button type="button" onclick="gnew('TicTacToe')">Tic-tac-toe</button>
+            <button type="button" onclick="gnew('G2048')">2048</button>
+            <button type="button" onclick="gnew('Chess')">Chess</button>
+        </div>
+        <pre id="gst" class="ota-log"></pre>
+    </div>
+
+    <div id="control" class="container mod-section tab-content">
+        <h2>Điều khiển</h2>
+        <div class="help-box">
+            <strong>Intent thử</strong>
+            <p>Gửi intent Vector → não Cozmars (firetruck, explore, stop, hello).</p>
+        </div>
+        <div class="xz-config-actions">
+            <button type="button" onclick="intent('intent_play_firetruck')">Firetruck</button>
+            <button type="button" onclick="intent('intent_explore_start')">Explore</button>
+            <button type="button" onclick="intent('intent_imperative_halt')">Stop</button>
+            <button type="button" onclick="intent('intent_greeting_hello')">Hello</button>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

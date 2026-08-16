@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cozmars-os"
+version = "1.6.0"
+description = "Cozmars OS — một process, tám engine, cài lên Pi Zero 2W"
+requires-python = ">=3.9"
+readme = "README.md"
+
+[project.optional-dependencies]
+pi = ["gpiozero", "adafruit-circuitpython-servokit", "adafruit-circuitpython-rgb-display"]
+vision = ["numpy", "opencv-python-headless"]
+audio = ["sounddevice", "numpy"]
+cloud = ["vosk"]
+web = ["aiohttp"]
+
+[project.scripts]
+cozmars = "cozmars.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["cozmars*"]
+
+[tool.setuptools.package-data]
+cozmars = ["engines/anim/*.json", "engines/wired/static/**", "engines/cloud/native/*"]
