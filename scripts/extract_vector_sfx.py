@@ -162,7 +162,8 @@ def load_wanted() -> set[str]:
 
 def decode_wem(path: Path) -> tuple[int, bytes]:
     audio_fmt, ch, rate, align, payload = parse_riff(path.read_bytes())
-    if audio_fmt == 1:
+    pcm16 = audio_fmt == 1 or (audio_fmt == 65534 and align == max(1, ch) * 2)
+    if pcm16:
         pcm = payload
     else:
         pcm = decode_ima(payload, ch, align)

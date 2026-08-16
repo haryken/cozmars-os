@@ -73,7 +73,7 @@ def _post_sim(body: dict) -> None:
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=4) as resp:
+        with urllib.request.urlopen(req, timeout=12) as resp:
             resp.read()
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         print(f"[TTS] sim play fail: {exc}", flush=True)

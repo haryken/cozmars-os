@@ -61,6 +61,8 @@ class BrainEngine:
             cliff_on = bool(self.env.get("cliff_stop", True))
             if self.mode == "boot":
                 self._boot(elapsed)
+            elif self.mode == "show":
+                pass
             elif self.mode == "listen" or getattr(self.robot, "listening", False):
                 self.robot.speed(0, 0)
                 self.robot.head(14)
@@ -79,17 +81,13 @@ class BrainEngine:
                     self.robot.head(12)
                 elif self.mode == "idle":
                     self._idle(elapsed)
-                elif self.mode == "show":
-                    pass
             await asyncio.sleep(0.05)
 
     async def _sleep_motion(self, seconds: float) -> None:
+        """Giữ lệnh chạy đủ thời gian cả khi Xiaozhi đang nghe (như firetruck)."""
         t0 = time.monotonic()
         on = bool(self.env.get("cliff_stop", True))
         while time.monotonic() - t0 < seconds and self.running:
-            if getattr(self.robot, "listening", False):
-                self.robot.stop()
-                return
             s = self.robot.sensors()
             if self.cliff.tick(s, on):
                 while self.running and self.cliff.tick(self.robot.sensors(), on):
@@ -167,8 +165,10 @@ class BrainEngine:
         if now - last < window:
             print(f"[ENGINE] {name} skip — vừa chạy {now - last:.1f}s trước", flush=True)
             return True
-        self._show_at[name] = now
         return False
+
+    def _show_mark(self, name: str) -> None:
+        self._show_at[name] = time.monotonic()
 
     async def _do(self, action: str, params: dict) -> None:
         self.mode = "show"
@@ -182,21 +182,24 @@ class BrainEngine:
             self.t0 = time.monotonic()
             self.explore.start()
         elif action == "forward":
+            print("[ENGINE] forward 1.4s", flush=True)
             self.anim.play_action("forward")
-            self.robot.speed(0.45, 0.45)
-            await self._sleep_motion(1.2)
+            self.robot.speed(0.50, 0.50)
+            await self._sleep_motion(1.4)
             self.robot.stop()
             self.mode = "idle"
         elif action == "backup":
+            print("[ENGINE] backup 1.2s", flush=True)
             self.anim.play_action("backward")
-            self.robot.speed(-0.4, -0.4)
-            await self._sleep_motion(1.0)
+            self.robot.speed(-0.45, -0.45)
+            await self._sleep_motion(1.2)
             self.robot.stop()
             self.mode = "idle"
         elif action in ("turn_left", "turn_right", "turn_around"):
+            s = 0.52 if action != "turn_right" else -0.52
+            dur = 1.8 if action == "turn_around" else 1.1
+            print(f"[ENGINE] {action} {dur:.1f}s", flush=True)
             self.anim.play_action("turn_left")
-            s = 0.45 if action != "turn_right" else -0.45
-            dur = 1.6 if action == "turn_around" else 0.7
             self.robot.speed(-s, s)
             await self._sleep_motion(dur)
             self.robot.stop()
@@ -215,12 +218,19 @@ class BrainEngine:
             await shows.lift_show(self.robot, self.anim)
             self.mode = "idle"
         elif action == "firetruck":
-            if self._show_recent("firetruck", 14.0):
+            if self._show_recent("firetruck", 16.0):
                 self.mode = "idle"
             else:
+                if self.cliff.owning:
+                    self.cliff.phase = "idle"
+                    self.cliff.owning = False
                 self.mood.event("firetruck")
-                print("[ENGINE] firetruck — chạy show 12s", flush=True)
-                await shows.firetruck(self.robot, self.anim)
+                print("[ENGINE] firetruck — chạy show WireOS 13.2s", flush=True)
+                ran = await shows.firetruck(self.robot, self.anim)
+                if float(ran or 0) >= 4.0:
+                    self._show_mark("firetruck")
+                else:
+                    print(f"[ENGINE] firetruck ngắn {float(ran or 0):.1f}s — không khóa cooldown", flush=True)
                 self.mode = "idle"
         elif action == "dance":
             await shows.dance(self.robot, self.anim)

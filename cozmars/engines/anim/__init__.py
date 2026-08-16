@@ -33,7 +33,7 @@ def sfx_tag(event: str, action: str | None = None) -> str:
     e = event or ""
     if a in WAKE_ACTIONS or "Wake_Word" in e:
         return "wake"
-    if a in SHOW_ACTIONS or "Distress_Alert" in e or "Fist_Bump" in e:
+    if a in SHOW_ACTIONS or "Distress_Alert" in e or "Fist_Bump" in e or "Codelab_Firetruck" in e:
         return "show"
     if a in SYS_ACTIONS or "Gazing_Scan" in e or "Tread_" in e:
         return "sys"
@@ -207,6 +207,6 @@ class AnimEngine:
             tmp.write(data)
             tmp.flush()
             try:
-                subprocess.run(["aplay", "-q", tmp.name], check=False, timeout=8)
+                subprocess.run(["aplay", "-q", tmp.name], check=False, timeout=16)
             except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
                 print(f"[ANIM] aplay skip: {exc}", flush=True)

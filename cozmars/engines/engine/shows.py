@@ -1,10 +1,15 @@
-"""Show trên thân + greeting. Firetruck ~12s như docs."""
+"""Show trên thân + greeting. Firetruck = clip WireOS anim_petdetection_dog_02."""
 
 from __future__ import annotations
 
 import asyncio
+import json
 import math
 import time
+from pathlib import Path
+
+_CLIPS = Path(__file__).with_name("clips")
+_FIRETRUCK = None
 
 
 def _over_cliff(robot) -> bool:
@@ -35,38 +40,97 @@ async def lift_show(robot, anim) -> None:
     robot.lift(0)
 
 
-async def firetruck(robot, anim) -> None:
-    print("[SHOW] firetruck ~12s", flush=True)
-    anim.from_action("firetruck")
-    t_clear = time.monotonic()
-    while _over_cliff(robot) and time.monotonic() - t_clear < 0.8:
-        robot.speed(-0.42, -0.42)
-        await asyncio.sleep(0.05)
-    robot.stop()
-    t0 = time.monotonic()
-    last_sfx = t0
-    aborted = False
-    while time.monotonic() - t0 < 12:
-        # 0.5s đầu: không hủy nếu IR còn dính mép sau lúc lùi
-        if time.monotonic() - t0 >= 0.5 and _over_cliff(robot):
-            print("[SHOW] firetruck abort — cliff", flush=True)
-            aborted = True
-            robot.stop()
+def _clip(name: str) -> dict:
+    global _FIRETRUCK
+    if name == "firetruck":
+        if _FIRETRUCK is None:
+            _FIRETRUCK = json.loads((_CLIPS / "firetruck.json").read_text(encoding="utf-8"))
+        return _FIRETRUCK
+    return json.loads((_CLIPS / f"{name}.json").read_text(encoding="utf-8"))
+
+
+def _hold(track: list, t_ms: float, default=0.0):
+    val = default
+    for row in track:
+        if row[0] > t_ms:
             break
-        t = time.monotonic() - t0
-        robot.speed(0.48, 0.22 if int(t * 5) % 2 == 0 else 0.58)
-        robot.head(20 if int(t * 4) % 2 == 0 else -10)
-        now = time.monotonic()
-        if now - last_sfx >= 1.4:
-            anim.play_sfx("Play__Robot_Vic_Sfx__Distress_Alert", tag="show")
-            last_sfx = now
-        await asyncio.sleep(0.18)
+        val = row[1]
+    return val
+
+
+def _body_lr(track: list, t_ms: float) -> tuple[float, float]:
+    for t0, dur, left, right in track:
+        if t0 <= t_ms < t0 + max(dur, 1):
+            return float(left), float(right)
+        if t0 > t_ms:
+            break
+    return 0.0, 0.0
+
+
+async def _play_clip(robot, anim, clip: dict) -> None:
+    duration = float(clip.get("duration_ms") or 0) / 1000.0
+    audio = list(clip.get("audio") or [])
+    face = list(clip.get("face") or [])
+    body = list(clip.get("body") or [])
+    head = list(clip.get("head") or [])
+    lift = list(clip.get("lift") or [])
+    light = list(clip.get("light") or [])
+    ai = fi = 0
+    last_face = None
+    last_lr = (None, None)
+    last_head = last_lift = last_bl = None
+    t0 = time.monotonic()
+    while time.monotonic() - t0 < duration:
+        t_ms = (time.monotonic() - t0) * 1000.0
+        while ai < len(audio) and t_ms >= float(audio[ai]["t"]):
+            anim.play_sfx(str(audio[ai]["e"]), tag="show")
+            ai += 1
+        while fi < len(face) and t_ms >= float(face[fi]["t"]):
+            expr = str(face[fi]["e"])
+            if expr != last_face:
+                anim.set_expression(expr)
+                last_face = expr
+            fi += 1
+        lr = _body_lr(body, t_ms)
+        if lr != last_lr:
+            robot.speed(*lr)
+            last_lr = lr
+        h = _hold(head, t_ms, 0.0)
+        if h != last_head:
+            robot.head(float(h))
+            last_head = h
+        z = _hold(lift, t_ms, 0.0)
+        if z != last_lift:
+            robot.lift(float(z))
+            last_lift = z
+        bl = _hold(light, t_ms, 0.85)
+        if bl != last_bl:
+            robot.backlight(max(0.12, float(bl) if light else 0.85))
+            last_bl = bl
+        await asyncio.sleep(0.03)
     robot.stop()
     robot.head(0)
-    if aborted:
-        return
+    robot.lift(0)
+    robot.backlight(0.85)
+
+
+async def firetruck(robot, anim) -> float:
+    """Chạy hết clip (kể cả đang hố/pickup). Trả về số giây đã diễn."""
+    clip = _clip("firetruck")
+    dur = float(clip.get("duration_ms") or 13200) / 1000.0
+    print(f"[SHOW] firetruck WireOS {clip.get('name')} {dur:.1f}s", flush=True)
+    if _over_cliff(robot):
+        print("[SHOW] firetruck — IR hụt sàn, vẫn chạy show (không abort)", flush=True)
+        t_clear = time.monotonic()
+        while _over_cliff(robot) and time.monotonic() - t_clear < 0.8:
+            robot.speed(-0.42, -0.42)
+            await asyncio.sleep(0.05)
+        robot.stop()
+    t0 = time.monotonic()
+    await _play_clip(robot, anim, clip)
+    ran = time.monotonic() - t0
     anim.set_expression("happy")
-    anim.play_action("eye_happy")
+    return ran
 
 
 async def dance(robot, anim) -> None:
