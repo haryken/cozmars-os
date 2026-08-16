@@ -16,6 +16,7 @@ _cmd_q: queue.Queue | None = None
 _play_samples = 0
 _play_rate = 24000
 _play_t0: float | None = None
+_play_last: float | None = None
 _stream_logged = False
 
 
@@ -59,8 +60,8 @@ def sim_cmd(body: dict) -> None:
     _cmd_q.put(body)
 
 
-def sim_mic_listen(on: bool, idle: bool = False) -> None:
-    sim_cmd({"op": "mic_listen", "on": on, "idle": idle, "source": "os"})
+def sim_mic_listen(on: bool, idle: bool = False, reason: str = "") -> None:
+    sim_cmd({"op": "mic_listen", "on": on, "idle": idle, "reason": reason, "source": "os"})
 
 
 def play_bytes(text: str, data: bytes | None, mime: str = "audio/mpeg", lang: str = "vi", stream: bool = False) -> None:
@@ -71,20 +72,23 @@ def play_bytes(text: str, data: bytes | None, mime: str = "audio/mpeg", lang: st
 
 
 def reset_play() -> None:
-    global _play_samples, _play_t0, _stream_logged
+    global _play_samples, _play_t0, _play_last, _stream_logged
     _play_samples = 0
     _play_t0 = None
+    _play_last = None
     _stream_logged = False
 
 
 def note_play(pcm: bytes, rate: int = 24000) -> None:
-    global _play_samples, _play_t0, _play_rate
+    global _play_samples, _play_t0, _play_last, _play_rate
     n = len(pcm) // 2
     if n <= 0:
         return
     _play_rate = rate
+    now = time.monotonic()
+    _play_last = now
     if _play_t0 is None:
-        _play_t0 = time.monotonic()
+        _play_t0 = now
     _play_samples += n
 
 
@@ -99,6 +103,12 @@ def speaker_remain() -> float:
         return 0.0
     dur = _play_samples / float(_play_rate)
     return dur - (time.monotonic() - _play_t0)
+
+
+def last_note_age() -> float:
+    if _play_last is None:
+        return 99.0
+    return time.monotonic() - _play_last
 
 
 def play_wav(text: str, wav: bytes, lang: str = "vi", stream: bool = False) -> None:
