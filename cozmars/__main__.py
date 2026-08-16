@@ -9,6 +9,7 @@ import argparse
 import asyncio
 import os
 import signal
+import subprocess
 
 from . import bootcheck, config
 from .engines.anim import AnimEngine
@@ -47,6 +48,47 @@ def _resolve_hal(args: argparse.Namespace) -> tuple[str, str]:
     return kind, url
 
 
+def _stop_sim_splash() -> None:
+    """Tắt splash trên LCD sim — cùng lúc OS thật stop systemd bootanim."""
+    sim = os.environ.get("COZMARS_SIM_URL", "").rstrip("/")
+    if not sim:
+        return
+    try:
+        import json
+        import urllib.request
+
+        req = urllib.request.Request(
+            sim + "/api/cmd",
+            data=json.dumps({"op": "boot_splash", "on": False}).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        urllib.request.urlopen(req, timeout=2).read()
+        print("[BOOT] sim splash off", flush=True)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[BOOT] sim splash skip — {exc}", flush=True)
+
+
+def _stop_bootanim(kind: str) -> None:
+    """Nhả ST7789 cho mắt — giống vic-anim stop vic-bootAnim."""
+    if kind == "sim":
+        _stop_sim_splash()
+        return
+    if kind != "pi":
+        return
+    try:
+        subprocess.run(
+            ["systemctl", "stop", "cozmars-bootanim.service"],
+            check=False,
+            timeout=3,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        print("[BOOT] bootanim stopped", flush=True)
+    except Exception:
+        pass
+
+
 async def _amain(args: argparse.Namespace) -> None:
     print(f"[BOOT] Cozmars OS {__version__}", flush=True)
     bootcheck.report()
@@ -69,13 +111,14 @@ async def _amain(args: argparse.Namespace) -> None:
             ports = (int(os.environ.get("COZMARS_WEB_PORT", "8099")),)
         else:
             ports = (80, 8080)
-        wired = WiredEngine(robot, brain, cloud=cloud, update=update, ports=ports)
+        wired = WiredEngine(robot, brain, cloud=cloud, update=update, camera=camera, ports=ports)
         await wired.start()
     print(
         f"[BOOT] engines: robot={robot.hal.name} camera={camera.backend or 'off'} "
         f"anim engine cloud switchboard wired={'on' if wired else 'off'} update",
         flush=True,
     )
+    _stop_bootanim(kind)
     stop = asyncio.Event()
 
     def _stop(*_a):

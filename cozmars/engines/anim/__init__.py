@@ -13,6 +13,8 @@ import wave
 from pathlib import Path
 
 from . import synth
+from . import eye_color as eye_color_mod
+from . import procedural_face
 from .expression_map import expression_for
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -37,6 +39,8 @@ def sfx_tag(event: str, action: str | None = None) -> str:
         return "show"
     if a in SYS_ACTIONS or "Gazing_Scan" in e or "Tread_" in e:
         return "sys"
+    if "Eye_Color" in e:
+        return "emote"
     if "Emote_" in e:
         return "emote"
     return "sfx"
@@ -47,7 +51,9 @@ class AnimEngine:
 
     def __init__(self, robot, env: dict | None = None) -> None:
         self.robot = robot
+        self.env = env or {}
         self.expression = "auto"
+        self.eye_color_name = "TIP_OVER_TEAL"
         self._catalog = json.loads(CATALOG.read_text(encoding="utf-8")) if CATALOG.exists() else {}
         self._action = json.loads(ACTION.read_text(encoding="utf-8")) if ACTION.exists() else {}
         self._lock = threading.Lock()
@@ -74,6 +80,15 @@ class AnimEngine:
             flush=True,
         )
         self._try_opencv()
+        boot = str(self.env.get("eye_color") or "TIP_OVER_TEAL")
+        hue = self.env.get("eye_hue")
+        sat = self.env.get("eye_sat")
+        self.set_eye_color(
+            boot,
+            hue=None if hue is None else float(hue),
+            sat=None if sat is None else float(sat),
+            play=False,
+        )
 
     def _try_opencv(self) -> None:
         try:
@@ -88,8 +103,50 @@ class AnimEngine:
 
     def set_expression(self, name: str, color=None) -> None:
         self.expression = name
+        face = procedural_face.named(name)
+        if color:
+            self.set_eye_color(str(color), play=False)
         self.robot.expression(name)
+        self.robot.face(face)
         print(f"[ANIM] eyes {name}", flush=True)
+
+    def set_face(self, frame: dict) -> None:
+        face = procedural_face.from_keyframe(frame)
+        self.robot.face(face)
+
+    def set_eye_color(
+        self,
+        name: str,
+        *,
+        hue: float | None = None,
+        sat: float | None = None,
+        play: bool = True,
+    ) -> str:
+        key, h, s, rainbow = eye_color_mod.hsv(name, hue, sat)
+        self.eye_color_name = key
+        self.env["eye_color"] = key
+        self.env["eye_hue"] = h
+        self.env["eye_sat"] = s
+        self.robot.eye_color(key, h, s, rainbow)
+        rgb = eye_color_mod.hsv_to_rgb(h, s)
+        print(
+            f"[ANIM] eye color {key}  hue={h:.2f} sat={s:.2f} rgb={rgb}"
+            f"{' rainbow' if rainbow else ''}",
+            flush=True,
+        )
+        if play:
+            try:
+                from cozmars.config import save_env
+
+                save_env(self.env)
+            except Exception:
+                pass
+            self.play_action("eye_color")
+        return key
+
+    def cycle_eye_color(self) -> str:
+        nxt = eye_color_mod.next_color(self.eye_color_name)
+        return self.set_eye_color(nxt)
 
     def from_action(self, action: str) -> None:
         self.set_expression(expression_for(action))

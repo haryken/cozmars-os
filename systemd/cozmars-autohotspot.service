@@ -1,0 +1,13 @@
+[Unit]
+Description=Cozmars WiFi auto-hotspot (client or AP 10.3.141.1)
+After=network.target local-fs.target
+Wants=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/cozmars-autohotspot
+RemainAfterExit=yes
+TimeoutStartSec=90
+
+[Install]
+WantedBy=multi-user.target

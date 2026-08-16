@@ -28,6 +28,8 @@ class BrainEngine:
         self._intent_q: asyncio.Queue[tuple[str, dict]] = asyncio.Queue()
         self.pet_explore = True
         self._show_at: dict[str, float] = {}
+        self._last_os_cmd = None
+        self._stim_lock: float | None = None
 
     def handle_intent(self, name: str, params: dict | None = None) -> None:
         self._intent_q.put_nowait((name, params or {}))
@@ -44,12 +46,130 @@ class BrainEngine:
         }.get(action, action)
         self.handle_intent(mapped)
 
+    def _take_os_cmd(self, sensors: dict) -> None:
+        cmd = sensors.get("osCmd")
+        if not isinstance(cmd, dict):
+            return
+        seq = cmd.get("seq")
+        if seq is None or seq == self._last_os_cmd:
+            return
+        self._last_os_cmd = seq
+        hal = getattr(self.robot, "hal", None)
+        if hal is not None and hasattr(hal, "_post"):
+            hal._post({"op": "os_cmd_ack"})
+        self._apply_os_cmd(cmd)
+
+    def _apply_os_cmd(self, cmd: dict) -> None:
+        kind = str(cmd.get("kind") or "")
+        print(f"[ENGINE] os cmd {kind} seq={cmd.get('seq')}", flush=True)
+        if kind == "assume":
+            self.mode = "teleop"
+            self.robot.speed(0, 0)
+            return
+        if kind == "release":
+            self.mode = "idle"
+            self.robot.speed(0, 0)
+            return
+        if kind == "eye_color":
+            name = str(cmd.get("name") or "TIP_OVER_TEAL")
+            if cmd.get("custom") or name.upper() == "CUSTOM":
+                self.anim.set_eye_color(
+                    "CUSTOM",
+                    hue=float(cmd.get("hue") or 0.5),
+                    sat=float(cmd.get("sat") or 1.0),
+                )
+            else:
+                hue = cmd.get("hue")
+                sat = cmd.get("sat")
+                self.anim.set_eye_color(
+                    name,
+                    hue=None if hue is None else float(hue),
+                    sat=None if sat is None else float(sat),
+                )
+            return
+        if kind == "volume":
+            lvl = max(0, min(5, int(cmd.get("level", 3))))
+            pct = (0, 20, 40, 60, 80, 100)[lvl]
+            self.anim.volume = pct / 100.0
+            self.env["say_vol"] = pct
+            self._save_env()
+            return
+        if kind == "expression":
+            self.anim.set_expression(str(cmd.get("name") or "auto"))
+            return
+        if kind == "say":
+            text = str(cmd.get("text") or "").strip()
+            if text:
+                from cozmars.engines.cloud import google_tts
+
+                google_tts.say(text, "vi")
+            return
+        if kind == "intent":
+            self.request(str(cmd.get("name") or "idle"))
+            return
+        if kind == "settings":
+            self._apply_settings_patch(cmd.get("patch") or {})
+
+    def _apply_settings_patch(self, patch: dict) -> None:
+        if not isinstance(patch, dict):
+            return
+        if "cliff_stop" in patch:
+            self.env["cliff_stop"] = bool(patch["cliff_stop"])
+        if "location" in patch:
+            self.env["location"] = str(patch["location"] or "")
+        if "timezone" in patch:
+            self.env["timezone"] = str(patch["timezone"] or "Asia/Bangkok")
+        if "temp_unit" in patch:
+            self.env["temp_unit"] = str(patch["temp_unit"] or "c")
+        if "volume_level" in patch:
+            lvl = max(0, min(5, int(patch["volume_level"])))
+            pct = (0, 20, 40, 60, 80, 100)[lvl]
+            self.anim.volume = pct / 100.0
+            self.env["say_vol"] = pct
+        if "stim_mode" in patch:
+            if str(patch["stim_mode"]) == "auto":
+                self._stim_lock = None
+            else:
+                self._stim_lock = float(patch.get("stim", self.mood.stimulated))
+        if "stim" in patch and self._stim_lock is not None:
+            self._stim_lock = max(0.0, min(1.0, float(patch["stim"])))
+            self.mood.stimulated = self._stim_lock
+        if "eye_color" in patch or "eye_hue" in patch:
+            name = str(patch.get("eye_color") or self.env.get("eye_color") or "TIP_OVER_TEAL")
+            hue = patch.get("eye_hue", self.env.get("eye_hue"))
+            sat = patch.get("eye_sat", self.env.get("eye_sat"))
+            custom = bool(patch.get("eye_custom")) or name.upper() == "CUSTOM"
+            if custom:
+                self.anim.set_eye_color(
+                    "CUSTOM",
+                    hue=float(hue if hue is not None else 0.5),
+                    sat=float(sat if sat is not None else 1.0),
+                )
+            else:
+                self.anim.set_eye_color(
+                    name,
+                    hue=None if hue is None else float(hue),
+                    sat=None if sat is None else float(sat),
+                )
+        self._save_env()
+
+    def _save_env(self) -> None:
+        try:
+            from cozmars.config import save_env
+
+            save_env(self.env)
+        except Exception:
+            pass
+
     async def run(self) -> None:
         print("[ENGINE] brain start — boot → khám phá", flush=True)
         self.anim.from_action("boot")
         while self.running:
             await self._drain_intents()
             sensors = self.robot.sensors()
+            self._take_os_cmd(sensors)
+            if sensors.get("ctrlAssumed") and self.mode not in ("show", "boot", "teleop"):
+                self.mode = "teleop"
             intent = sensors.get("osIntent")
             if intent:
                 print(f"[ENGINE] sim intent {intent}", flush=True)
@@ -59,8 +179,12 @@ class BrainEngine:
                 self.request(str(intent))
             elapsed = time.monotonic() - self.t0
             cliff_on = bool(self.env.get("cliff_stop", True))
+            if self._stim_lock is not None:
+                self.mood.stimulated = self._stim_lock
             if self.mode == "boot":
                 self._boot(elapsed)
+            elif self.mode == "teleop":
+                pass
             elif self.mode == "show":
                 pass
             elif self.mode == "listen" or getattr(self.robot, "listening", False):
@@ -258,6 +382,13 @@ class BrainEngine:
             self.mood.event("scold")
             self.anim.set_expression("sad")
             self.anim.play_mood("sad", self.mood.stimulated)
+            self.mode = "idle"
+        elif action == "eye_color":
+            wanted = str(params.get("color") or "").strip()
+            if wanted:
+                self.anim.set_eye_color(wanted)
+            else:
+                self.anim.cycle_eye_color()
             self.mode = "idle"
         elif action == "quiet":
             self.anim.volume = 0

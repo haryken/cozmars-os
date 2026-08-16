@@ -44,30 +44,189 @@
         <label class="nav-select-wrap" for="navSelect">
             <span class="nav-select-label">Menu</span>
             <select id="navSelect">
-                <option value="#about">Giới thiệu</option>
-                <option value="#ota">Cập nhật OS</option>
+                <option value="#botsettings">Cài đặt bot</option>
+                <option value="#control">Điều khiển</option>
                 <option value="#xiaozhi">Xiaozhi</option>
                 <option value="#games">Trò chơi</option>
-                <option value="#control">Điều khiển</option>
+                <option value="#ota">Cập nhật OS</option>
+                <option value="#about">Giới thiệu</option>
             </select>
         </label>
         <div class="tabs" role="tablist">
-            <button type="button" class="active" data-target="#about">Giới thiệu</button>
-            <button type="button" data-target="#ota">Cập nhật OS</button>
+            <button type="button" class="active" data-target="#botsettings">Cài đặt bot</button>
+            <button type="button" data-target="#control">Điều khiển</button>
             <button type="button" data-target="#xiaozhi">Xiaozhi</button>
             <button type="button" data-target="#games">Trò chơi</button>
-            <button type="button" data-target="#control">Điều khiển</button>
+            <button type="button" data-target="#ota">Cập nhật OS</button>
+            <button type="button" data-target="#about">Giới thiệu</button>
         </div>
     </nav>
 
-    <div id="about" class="container mod-section tab-content active">
+    <div id="botsettings" class="container mod-section tab-content active">
+        <h2>Cài đặt bot</h2>
+        <p class="bot-intro">Chọn một mục bên dưới — giống WireOS :8080.</p>
+        <div id="jdocStatus"></div>
+        <div class="bot-nav">
+            <button type="button" class="bot-nav-item" onclick="showBotSection('bot-volume')"><span class="bot-ico">🔊</span>Âm lượng</button>
+            <button type="button" class="bot-nav-item" onclick="showBotSection('bot-eyes')"><span class="bot-ico">👁</span>Màu mắt</button>
+            <button type="button" class="bot-nav-item" onclick="showBotSection('bot-faces')"><span class="bot-ico">😊</span>Biểu cảm</button>
+            <button type="button" class="bot-nav-item" onclick="showBotSection('bot-location')"><span class="bot-ico">📍</span>Vị trí</button>
+            <button type="button" class="bot-nav-item" onclick="showBotSection('bot-timezone')"><span class="bot-ico">🕒</span>Múi giờ</button>
+            <button type="button" class="bot-nav-item" onclick="showBotSection('bot-temp')"><span class="bot-ico">🌡</span>Đơn vị nhiệt</button>
+            <button type="button" class="bot-nav-item" onclick="showBotSection('bot-cliff')"><span class="bot-ico">🕳</span>Cảm biến vực</button>
+            <button type="button" class="bot-nav-item" onclick="showBotSection('bot-stim')"><span class="bot-ico">⚡</span>Stim</button>
+        </div>
+        <hr class="smallhr">
+
+        <div id="bot-volume" class="bot-section" style="display:none;">
+            <h3>🔊 Âm lượng</h3>
+            <div class="help-box"><strong>Cách dùng</strong><ol><li>Chọn mức âm lượng — thay đổi áp dụng ngay.</li><li>Tắt (Mute) = robot không phát tiếng.</li></ol></div>
+            <div class="bot-opt-list">
+                <label><input type="radio" name="vol" value="0" onchange="setMasterVolumeVal(0)"> Tắt</label>
+                <label><input type="radio" name="vol" value="1" onchange="setMasterVolumeVal(1)"> Thấp</label>
+                <label><input type="radio" name="vol" value="2" onchange="setMasterVolumeVal(2)"> Trung thấp</label>
+                <label><input type="radio" name="vol" value="3" onchange="setMasterVolumeVal(3)"> Trung bình</label>
+                <label><input type="radio" name="vol" value="4" onchange="setMasterVolumeVal(4)"> Trung cao</label>
+                <label><input type="radio" name="vol" value="5" onchange="setMasterVolumeVal(5)"> Cao</label>
+            </div>
+        </div>
+
+        <div id="bot-eyes" class="bot-section" style="display:none;">
+            <h3>👁 Màu mắt</h3>
+            <div class="help-box"><strong>Cách dùng</strong><ol><li>Chọn preset (gồm Cầu vồng / Đỏ) — đổi ngay.</li><li>Hoặc dùng <b>màu tùy chỉnh</b>: kéo thanh / chọn ô màu rồi Áp dụng.</li></ol></div>
+            <div class="bot-opt-list">
+                <label><input type="radio" name="eye" value="0" onchange="setEyePresetVal(0)"> Xanh ngọc</label>
+                <label><input type="radio" name="eye" value="1" onchange="setEyePresetVal(1)"> Cam</label>
+                <label><input type="radio" name="eye" value="2" onchange="setEyePresetVal(2)"> Vàng</label>
+                <label><input type="radio" name="eye" value="3" onchange="setEyePresetVal(3)"> Xanh chanh</label>
+                <label><input type="radio" name="eye" value="4" onchange="setEyePresetVal(4)"> Xanh dương</label>
+                <label><input type="radio" name="eye" value="5" onchange="setEyePresetVal(5)"> Tím</label>
+                <label><input type="radio" name="eye" value="6" onchange="setEyePresetVal(6)"> Xanh khác</label>
+                <label><input type="radio" name="eye" value="7" onchange="setEyePresetVal(7)"> Cầu vồng</label>
+                <label><input type="radio" name="eye" value="8" onchange="setEyePresetVal(8)"> Đỏ</label>
+            </div>
+            <hr class="smallhr">
+            <h4>Màu tùy chỉnh</h4>
+            <div class="eye-custom">
+                <div class="eye-custom-row">
+                    <label for="eyeColorPicker">Chọn màu</label>
+                    <input type="color" id="eyeColorPicker" value="#00c8c8" oninput="onEyePickerInput()">
+                    <span id="eyeCustomSwatch" class="eye-swatch"></span>
+                </div>
+                <div class="eye-custom-row">
+                    <label for="eyeHue">Hue <span id="eyeHueVal">0.42</span></label>
+                    <input type="range" id="eyeHue" min="0" max="1" step="0.001" value="0.42" oninput="onEyeSliderInput()">
+                </div>
+                <div class="eye-custom-row">
+                    <label for="eyeSat">Độ bão hòa <span id="eyeSatVal">1.00</span></label>
+                    <input type="range" id="eyeSat" min="0" max="1" step="0.001" value="1" oninput="onEyeSliderInput()">
+                </div>
+                <button type="button" onclick="applyCustomEyeColor()">Áp dụng màu tùy chỉnh</button>
+            </div>
+        </div>
+
+        <div id="bot-faces" class="bot-section" style="display:none;">
+            <h3>😊 Biểu cảm</h3>
+            <div class="help-box">Đổi hình mắt procedural. Cozmars chưa ghi danh khuôn mặt người như Vector.</div>
+            <div class="xz-config-actions">
+                <button type="button" onclick="setExpr('happy')">happy</button>
+                <button type="button" onclick="setExpr('sad')">sad</button>
+                <button type="button" onclick="setExpr('surprised')">surprised</button>
+                <button type="button" onclick="setExpr('angry')">angry</button>
+                <button type="button" onclick="setExpr('neutral')">neutral</button>
+                <button type="button" onclick="setExpr('focused')">focused</button>
+                <button type="button" onclick="setExpr('sleepy')">sleepy</button>
+                <button type="button" onclick="setExpr('auto')">auto</button>
+            </div>
+        </div>
+
+        <div id="bot-location" class="bot-section" style="display:none;">
+            <h3>📍 Vị trí</h3>
+            <div class="help-box"><ol><li>Gõ thành phố / địa danh (vd. Ho Chi Minh City).</li><li>Bấm Lưu — dùng cho thời tiết / ngữ cảnh.</li></ol></div>
+            <div class="button-container">
+                <input type="text" placeholder="Ho Chi Minh City, Vietnam" id="location">
+                <button id="locationSet" onclick="setLocation()">Lưu vị trí</button>
+            </div>
+        </div>
+
+        <div id="bot-timezone" class="bot-section" style="display:none;">
+            <h3>🕒 Múi giờ</h3>
+            <div class="help-box"><ol><li>Chọn múi giờ gần bạn (Asia/Ho_Chi_Minh ≈ Asia/Bangkok).</li><li>Bấm Lưu múi giờ.</li></ol></div>
+            <div class="button-container">
+                <select id="timezone">
+                    <option value="GMT">GMT</option>
+                    <option value="Europe/London">Europe/London</option>
+                    <option value="Europe/Paris">Europe/Paris</option>
+                    <option value="Asia/Dubai">Asia/Dubai</option>
+                    <option value="Asia/Bangkok" selected>Asia/Bangkok</option>
+                    <option value="Asia/Jakarta">Asia/Jakarta</option>
+                    <option value="Asia/Hong_Kong">Asia/Hong_Kong</option>
+                    <option value="Asia/Singapore">Asia/Singapore</option>
+                    <option value="Asia/Tokyo">Asia/Tokyo</option>
+                    <option value="Australia/Sydney">Australia/Sydney</option>
+                    <option value="America/New_York">America/New_York</option>
+                    <option value="America/Los_Angeles">America/Los_Angeles</option>
+                </select>
+                <button id="timezoneSet" onclick="setTimezone()">Lưu múi giờ</button>
+            </div>
+        </div>
+
+        <div id="bot-temp" class="bot-section" style="display:none;">
+            <h3>🌡 Đơn vị nhiệt</h3>
+            <div class="help-box">Chọn °C hoặc °F rồi Lưu.</div>
+            <div class="button-container">
+                <select id="tUnits">
+                    <option value="c">Độ C (Celsius)</option>
+                    <option value="f">Độ F (Fahrenheit)</option>
+                </select>
+                <button onclick="setTempUnits()">Lưu đơn vị</button>
+            </div>
+        </div>
+
+        <div id="bot-cliff" class="bot-section" style="display:none;">
+            <h3>🕳 Cảm biến vực</h3>
+            <div class="help-box">IR sàn. Bật = dừng khi thấy vực.</div>
+            <div class="bot-opt-list">
+                <label><input type="radio" name="cliff" value="1" onchange="setCliff(true)"> Bật (an toàn)</label>
+                <label><input type="radio" name="cliff" value="0" onchange="setCliff(false)"> Tắt</label>
+            </div>
+        </div>
+
+        <div id="bot-stim" class="bot-section" style="display:none;">
+            <h3>⚡ Kích thích (stim)</h3>
+            <div class="help-box">Auto = stim tự nhiên. Low / Med / High giữ mức.</div>
+            <div class="stim-presets">
+                <button type="button" onclick="stimPreset('auto')">Auto</button>
+                <button type="button" onclick="stimPreset(0.15)">Low</button>
+                <button type="button" onclick="stimPreset(0.5)">Med</button>
+                <button type="button" onclick="stimPreset(0.9)">High</button>
+            </div>
+            <label class="stim-slider-row">
+                <input type="range" id="stimSlider" min="0" max="100" value="50" oninput="stimSliderInput(this.value)" onchange="stimSliderCommit(this.value)">
+                <span id="stimSliderLabel">0.50</span>
+            </label>
+            <div class="stim-mode" id="stimModeLabel">auto</div>
+        </div>
+    </div>
+
+    <div id="about" class="container mod-section tab-content">
         <h2>Giới thiệu</h2>
         <div class="help-box">
             <strong>Cozmars OS</strong>
             <p>Tám engine · Pi Zero 2W · không Docker. Sim: STT Chrome trên dashboard, chữ gửi lên Xiaozhi cloud.</p>
         </div>
         <pre id="aboutj" class="ota-log">đang tải…</pre>
-        <p><a href="/fw/" style="color:#67e8f9">Cal firmware</a> · <a href="/wifi" style="color:#67e8f9">WiFi</a></p>
+        <p>
+          <a href="/fw/" style="color:#67e8f9">Cal firmware</a>
+          · <a href="/wifi" style="color:#67e8f9">WiFi</a>
+          · <a href="http://localhost:8077/" style="color:#67e8f9" id="wifi8077">WiFi :8077</a>
+        </p>
+        <script>
+          (function () {
+            var a = document.getElementById("wifi8077");
+            if (a) a.href = location.protocol + "//" + location.hostname + ":8077/";
+          })();
+        </script>
     </div>
 
     <div id="ota" class="container mod-section tab-content">
@@ -196,11 +355,122 @@
     </div>
 
     <div id="control" class="container mod-section tab-content">
-        <h2>Điều khiển</h2>
+        <h2>🎮 Điều khiển (beta)</h2>
         <div class="help-box">
-            <strong>Intent thử</strong>
-            <p>Gửi intent Vector → não Cozmars (firetruck, explore, stop, hello).</p>
+            <strong>Cách dùng</strong>
+            <ol>
+                <li>Bấm <b>Chiếm quyền</b> trước — lúc đó mới lái / tay / đầu / gương / micro được.</li>
+                <li>Dùng pad / camera khi đang chiếm quyền. Bật <b>Micro</b> để nói qua loa robot; <b>Nghe robot</b> để nghe mic robot trên điện thoại (đàm thoại 2 chiều).</li>
+                <li>Xong thì tắt micro và bấm <b>Nhả quyền</b> — robot mới về trạng thái tự nhiên / Xiaozhi.</li>
+                <li>Muốn điều khiển <b>khác mạng</b>: bật <b>Ngoài mạng</b> → copy link HTTPS → mở trên 4G/Wi‑Fi khác.</li>
+            </ol>
+            <p class="help-warn">Micro cần trang HTTPS: mở https://IP-robot:8443 — HTTP bị trình duyệt chặn mic. Trên sim LAN, mic có thể bị chặn nếu không phải localhost.</p>
+            <p class="help-warn">Link ngoài mạng chỉ tắt khi bạn tắt — ai có link đều điều khiển được, nhớ tắt khi xong.</p>
         </div>
+        <div id="controlStatus"></div>
+        <hr class="smallhr">
+
+        <div class="ctrl-session" role="group" aria-label="Session">
+            <button type="button" id="ctrlAssumeBtn" class="ctrl-seg" onclick="ctrlAssume()">Chiếm quyền</button>
+            <button type="button" id="ctrlReleaseBtn" class="ctrl-seg is-active" onclick="ctrlRelease()">Nhả quyền</button>
+        </div>
+
+        <div class="ctrl-remote-card" id="ctrlRemotePanel">
+            <div class="ctrl-remote-head">
+                <div class="ctrl-remote-title">Ngoài mạng</div>
+                <div class="ctrl-remote-sub">Tạo link HTTPS (Cloudflare) để điều khiển từ 4G / Wi‑Fi khác. Giữ đến khi bạn tắt.</div>
+            </div>
+            <div class="ctrl-session ctrl-remote-toggle" role="group" aria-label="Remote share">
+                <button type="button" id="ctrlRemoteOffBtn" class="ctrl-seg is-active" onclick="ctrlRemoteToggle(false)">Tắt</button>
+                <button type="button" id="ctrlRemoteOnBtn" class="ctrl-seg" onclick="ctrlRemoteToggle(true)">Bật link</button>
+            </div>
+            <div id="ctrlRemoteBox" class="ctrl-remote-box" hidden>
+                <div class="ctrl-remote-link-label">Link điều khiển</div>
+                <div class="ctrl-remote-row">
+                    <input type="text" id="ctrlRemoteURL" readonly placeholder="…" aria-label="Remote control URL">
+                    <button type="button" id="ctrlRemoteCopyBtn" class="ctrl-remote-copy" onclick="ctrlRemoteCopy()">Copy</button>
+                </div>
+                <p id="ctrlRemoteStatus" class="ctrl-remote-status"></p>
+            </div>
+        </div>
+
+        <div class="ctrl-stage">
+            <div class="ctrl-stage-cam">
+                <div id="ctrlCamBox" class="ctrl-cam" aria-label="Camera stream">
+                    <div class="ctrl-cam-placeholder"><span>Camera tắt — bật switch bên dưới hoặc Chiếm quyền.</span></div>
+                </div>
+                <div class="ctrl-switches">
+                    <label class="ctrl-switch" for="ctrlCamSwitch">
+                        <span class="ctrl-switch-text">Camera</span>
+                        <input type="checkbox" id="ctrlCamSwitch" onchange="ctrlCamToggle(this.checked)">
+                        <span class="ctrl-switch-track" aria-hidden="true"><span class="ctrl-switch-thumb"></span></span>
+                    </label>
+                    <label class="ctrl-switch" for="ctrlMirrorSwitch">
+                        <span class="ctrl-switch-text">Gương</span>
+                        <input type="checkbox" id="ctrlMirrorSwitch" disabled onchange="ctrlMirrorToggle(this.checked)">
+                        <span class="ctrl-switch-track" aria-hidden="true"><span class="ctrl-switch-thumb"></span></span>
+                    </label>
+                    <label class="ctrl-switch" for="ctrlMicSwitch">
+                        <span class="ctrl-switch-text">Micro</span>
+                        <input type="checkbox" id="ctrlMicSwitch" disabled onchange="ctrlMicToggle(this.checked)">
+                        <span class="ctrl-switch-track" aria-hidden="true"><span class="ctrl-switch-thumb"></span></span>
+                    </label>
+                    <label class="ctrl-switch" for="ctrlListenSwitch">
+                        <span class="ctrl-switch-text">Nghe robot</span>
+                        <input type="checkbox" id="ctrlListenSwitch" disabled onchange="ctrlListenToggle(this.checked)">
+                        <span class="ctrl-switch-track" aria-hidden="true"><span class="ctrl-switch-thumb"></span></span>
+                    </label>
+                </div>
+            </div>
+            <div class="ctrl-stage-pad">
+                <div class="ctrl-grid" id="ctrlGrid">
+                    <button type="button" class="ctrl-btn" disabled
+                        onpointerdown="ctrlLiftHold(2,event)" onpointerup="ctrlLiftStop(event)"
+                        onpointerleave="ctrlLiftStop(event)" onpointercancel="ctrlLiftStop(event)">Nâng tay</button>
+                    <button type="button" class="ctrl-btn" disabled
+                        onpointerdown="ctrlHold(140,140,event)" onpointerup="ctrlStop(event)"
+                        onpointerleave="ctrlStop(event)" onpointercancel="ctrlStop(event)">Tiến</button>
+                    <button type="button" class="ctrl-btn" disabled
+                        onpointerdown="ctrlHeadHold(2,event)" onpointerup="ctrlHeadStop(event)"
+                        onpointerleave="ctrlHeadStop(event)" onpointercancel="ctrlHeadStop(event)">Ngẩng</button>
+                    <button type="button" class="ctrl-btn" disabled
+                        onpointerdown="ctrlHold(-160,160,event)" onpointerup="ctrlStop(event)"
+                        onpointerleave="ctrlStop(event)" onpointercancel="ctrlStop(event)">Trái ↺</button>
+                    <button type="button" class="ctrl-btn ctrl-stop" disabled
+                        onclick="ctrlStopAll(event)">Dừng</button>
+                    <button type="button" class="ctrl-btn" disabled
+                        onpointerdown="ctrlHold(160,-160,event)" onpointerup="ctrlStop(event)"
+                        onpointerleave="ctrlStop(event)" onpointercancel="ctrlStop(event)">Phải ↻</button>
+                    <button type="button" class="ctrl-btn" disabled
+                        onpointerdown="ctrlLiftHold(-2,event)" onpointerup="ctrlLiftStop(event)"
+                        onpointerleave="ctrlLiftStop(event)" onpointercancel="ctrlLiftStop(event)">Hạ tay</button>
+                    <button type="button" class="ctrl-btn" disabled
+                        onpointerdown="ctrlHold(-140,-140,event)" onpointerup="ctrlStop(event)"
+                        onpointerleave="ctrlStop(event)" onpointercancel="ctrlStop(event)">Lùi</button>
+                    <button type="button" class="ctrl-btn" disabled
+                        onpointerdown="ctrlHeadHold(-2,event)" onpointerup="ctrlHeadStop(event)"
+                        onpointerleave="ctrlHeadStop(event)" onpointercancel="ctrlHeadStop(event)">Cúi</button>
+                </div>
+                <p class="ctrl-pad-hint">Giữ để chạy — giữa = dừng hết.</p>
+            </div>
+        </div>
+        <hr class="smallhr">
+        <h3 style="margin:8px 0; color:#67e8f9;">🗣 Robot nói</h3>
+        <div class="help-box"><ol><li>Cần <b>Chiếm quyền</b> trước.</li><li>Nhập câu → Gửi — robot nói bằng TTS.</li></ol></div>
+        <div class="button-container" style="gap:6px; flex-wrap:wrap;">
+            <input type="text" id="ctrlSayText" placeholder="Nhập nội dung" disabled style="flex:1; min-width:180px;">
+            <button type="button" id="ctrlSayBtn" disabled onclick="ctrlSayText()">Gửi</button>
+        </div>
+        <hr class="smallhr">
+        <h3 style="margin:8px 0; color:#67e8f9;">🔊 Phát âm thanh</h3>
+        <div class="help-box"><ol><li>Chọn file <b>.wav</b> — trình duyệt resample 8 kHz mono rồi gửi.</li><li>Nghe thử nếu muốn, rồi <b>Gửi file</b> (cần Chiếm quyền).</li></ol></div>
+        <div class="button-container" style="gap:6px; flex-wrap:wrap;">
+            <input type="file" id="ctrlAudioFile" accept=".wav,audio/wav">
+            <button type="button" id="ctrlAudioSendBtn" style="display:none;" onclick="ctrlSendAudio()">Gửi file</button>
+        </div>
+        <audio id="ctrlAudioPreview" controls style="width:100%; max-width:420px; margin-top:8px;"></audio>
+        <hr class="smallhr">
+        <h3 style="margin:8px 0; color:#67e8f9;">Shows</h3>
         <div class="xz-config-actions">
             <button type="button" onclick="intent('intent_play_firetruck')">Firetruck</button>
             <button type="button" onclick="intent('intent_explore_start')">Explore</button>
@@ -210,5 +480,7 @@
     </div>
 
     <script src="/static/js/app.js"></script>
+    <script src="/static/js/jdoc-settings.js"></script>
+    <script src="/static/js/control.js?v=2"></script>
 </body>
 </html>

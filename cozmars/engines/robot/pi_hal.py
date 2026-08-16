@@ -86,6 +86,12 @@ class PiHal:
     def expression(self, name: str) -> None:
         print(f"[HAL] ST7789 expression {name} (anim vẽ frame)", flush=True)
 
+    def face(self, frame: dict) -> None:
+        pass
+
+    def eye_color(self, name: str, hue: float, sat: float, rainbow: bool) -> None:
+        print(f"[HAL] eye color {name} hue={hue:.2f} rainbow={int(rainbow)}", flush=True)
+
     def backlight(self, value: float) -> None:
         print(f"[HAL] backlight ch15 {value:.2f}", flush=True)
 

@@ -71,15 +71,36 @@ def _light_v(kf: dict) -> float:
     return round(_clip(peak, 0.0, 1.0), 3)
 
 
+def _eye19(src) -> list[float]:
+    base = [0.0, 0.0, 1.0, 1.0, 0.0, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    vals = [round(float(x), 3) for x in (src or [])[:19]]
+    return (vals + base[len(vals) :])[:19]
+
+
+def _face_kf(f: dict, t: float) -> dict:
+    return {
+        "t": int(round(t)),
+        "L": _eye19(f.get("leftEye")),
+        "R": _eye19(f.get("rightEye")),
+        "a": round(float(f.get("faceAngle") or 0), 3),
+        "cx": round(float(f.get("faceCenterX") or 0), 3),
+        "cy": round(float(f.get("faceCenterY") or 0), 3),
+        "sx": round(float(f.get("faceScaleX") or 1), 3),
+        "sy": round(float(f.get("faceScaleY") or 1), 3),
+    }
+
+
 def build_clip(frames: list[dict]) -> dict:
     audio = []
     body = []
     head = []
     lift = []
     light = []
+    face = []
     tmax = 0.0
     last_light = -1.0
     last_lt = -999
+    last_ft = None
     for f in frames:
         t = float(f.get("triggerTime_ms") or 0)
         d = float(f.get("durationTime_ms") or 0)
@@ -101,16 +122,20 @@ def build_clip(frames: list[dict]) -> dict:
             if abs(v - last_light) >= 0.08 or t - last_lt >= 180:
                 light.append([int(round(t)), v])
                 last_light, last_lt = v, t
+        elif name == "ProceduralFaceKeyFrame":
+            if last_ft is None or t - last_ft >= 66:
+                face.append(_face_kf(f, t))
+                last_ft = t
+    if face:
+        face.append(_face_kf(
+            next(x for x in reversed(frames) if x.get("Name") == "ProceduralFaceKeyFrame"),
+            tmax,
+        ))
     return {
         "name": "anim_petdetection_dog_02",
         "duration_ms": int(round(max(tmax, 13200))),
         "audio": audio,
-        "face": [
-            {"t": 0, "e": "surprised"},
-            {"t": 1680, "e": "focused"},
-            {"t": 2670, "e": "angry"},
-            {"t": 9760, "e": "happy"},
-        ],
+        "face": face,
         "body": body,
         "head": head,
         "lift": lift,

@@ -1,76 +1,93 @@
-# Cài Cozmars OS lên Pi Zero 2W (device thật)
+# Cài Cozmars OS lên Pi Zero 2W
 
-Board: Raspberry Pi Zero 2 W. OS: Raspberry Pi OS Lite **32-bit** (Bullseye ưu tiên vì `picamera`).
+Board: Raspberry Pi Zero 2 W + Raspberry Pi OS Lite **32-bit** (Bullseye ưu tiên vì `picamera`).
 
-Laptop không chạy não. Sau khi cài, rút cáp — robot tự `systemd`.
-
-## 1. raspi-config
-
-SSH, I2C, SPI, Camera (legacy trên Bullseye), hostname, GPU 128 MB.
-
-## 2. Apt
-
-```bash
-sudo apt update
-sudo apt install -y python3-pip python3-dev python3-cffi \
-  libportaudio2 portaudio19-dev libsndfile1 ffmpeg \
-  libjpeg-dev zlib1g-dev libatlas-base-dev \
-  git avahi-daemon
-```
-
-I2S mic INMP441 + loa MAX98357: `arecord -l` / `aplay -l` phải thấy card.
-
-## 3. Copy source + install
-
-Từ laptop (`/home/linh/Projects/cozmars-os`):
-
-```bash
-rsync -a --exclude .git --exclude dist cozmars-os/ pi@<IP>:/home/pi/src/cozmars-os/
-ssh pi@<IP> 'bash /home/pi/src/cozmars-os/scripts/install-pi.sh'
-```
-
-`install-pi.sh` làm:
-
-- `pip install -e /home/pi/src/cozmars-os`
-- copy `config/conf.json` + `env.json` vào `/home/pi/.cozmars/` (**không ghi đè** nếu đã cal)
-- `systemd enable --now cozmars.service` → `python3 -m cozmars --hal pi --web`
-
-Mở `http://<IP>/`. JSON version: `http://<IP>/about`.
-
-## 4. Dev — sửa từng engine
+**Không** copy source rồi `python3` chạy tay. Một lệnh từ laptop:
 
 ```bash
 cd /home/linh/Projects/cozmars-os
-./scripts/deploy.sh 192.168.x.x robot
-./scripts/deploy.sh 192.168.x.x anim
+chmod +x scripts/*.sh
+./scripts/bootstrap-pi.sh pi@<IP>
+```
+
+Script copy source sang Pi rồi chạy `install-pi.sh`. Trên Pi nó:
+
+1. `apt` — `gpiozero`, `numpy`, `opencv`, PIL, portaudio (không pip compile trên 512 MB)
+2. Venv `/opt/cozmars/venv` (`--system-site-packages` để dùng gói apt)
+3. `pip install -e '.[pi,audio,web]'` — Adafruit ST7789/servo, `aiohttp`, `sounddevice`
+4. Bật I2C / SPI / Camera nếu có `raspi-config`
+5. Bật splash ST7789 + `systemd` Cozmars (bật nguồn → logo → robot, không chờ mạng)
+6. WiFi: autohotspot + portal `:8077`
+
+Mở `http://<IP>/`. Log: `journalctl -u cozmars -f`.
+
+Bật nguồn: LCD ST7789 hiện **Cozmars + serial + chấm nhấp** (`cozmars-bootanim`) trong lúc kernel/Python lên; khi OS sẵn sàng thì tắt splash (giữ frame, rồi mắt chiếm màn). Log splash: `journalctl -u cozmars-bootanim -f`.
+
+## Test splash trên máy ảo (không cần Pi)
+
+Sim **không** có SPI/ST7789. Logo hiện trên canvas LCD + mặt 3D tại http://127.0.0.1:8088/
+
+1. Chạy sim, hard-refresh dashboard (`Ctrl+Shift+R`).
+2. **Xem splash** — logo ~5 giây (không cần nạp OS).
+3. Hoặc **Nạp cozmars-os** → **Chạy thực tế**: splash trong lúc spawn, tắt khi OS in `[BOOT] sim splash off`.
+
+Xuất GIF (cùng `render_frame` như trên Pi):
+
+```bash
+cd /home/linh/Projects/cozmars-os
+PYTHONPATH=. python3 -m cozmars.bootanim --preview
+# → /tmp/cozmars-bootanim.gif
+```
+
+Cần SSH được `pi@<IP>` (mật khẩu hoặc key) và Pi đã flash Raspberry Pi OS, có mạng.
+
+## (Tuỳ chọn) wheel offline — ít phụ thuộc pip lúc cài
+
+Trên laptop có mạng:
+
+```bash
+./scripts/fetch-pi-wheels.sh 39    # Bullseye Python 3.9
+# hoặc: ./scripts/fetch-pi-wheels.sh 311   # Bookworm 3.11
+./scripts/bootstrap-pi.sh pi@<IP>
+```
+
+OpenCV/NumPy **không** nằm trong wheel pip — luôn lấy từ apt trên Pi.
+
+## Dev — sửa code rồi đẩy lại
+
+```bash
 ./scripts/deploy.sh 192.168.x.x all
 ```
 
-SCP đúng thư mục rồi `systemctl restart cozmars`. Không đụng `~/.cozmars` trừ `deploy.sh <IP> conf`.
+Không ghi đè `~/.cozmars` (calib) trừ `./scripts/deploy.sh <IP> conf`.
 
-## 5. OTA file `.tgz`
+## WiFi (lần đầu / đổi mạng)
 
-Trên laptop:
+Pi Zero 2W chỉ **WiFi 2.4 GHz** (+ Bluetooth sẵn trên board).
 
-```bash
-./scripts/pack.sh
-# dist/cozmars-1.0.0.tgz + MANIFEST.json bên trong
-```
+| Tình trạng | Cách vào trang cấu hình |
+|------------|-------------------------|
+| **Mất / chưa có WiFi nhà** | Robot phát **hotspot mở** (SSID = hostname, không mật khẩu). Phone nối → tự mở trang cấu hình. Hoặc `http://10.3.141.1/wifi` |
+| **Đã vào LAN** | `http://<ip-robot>:8077/` hoặc `http://<hostname>.local:8077/` — hoặc link WiFi trên trang About |
 
-Host file bằng HTTP rồi trên web Pi dán URL `http(s)://…/cozmars-1.0.0.tgz`.
+Luồng: nối hotspot → gõ SSID nhà → **Áp dụng mạng** → chờ ~30–60s → robot vào WiFi nhà.
 
-Không đóng `conf.json` đã cal vào tarball. OTA không được ghi `~/.cozmars`.
+Service: `cozmars-autohotspot.service` + timer 2 phút. Log: `journalctl -u cozmars-autohotspot -n 50`.
 
-## 6. Log trên Pi
+Cài lại riêng: `sudo bash scripts/install-wifi.sh`.
 
-```bash
-journalctl -u cozmars -f
-```
-
-Dòng `[DEPS] MISS gpiozero` = thiếu apt/pip. Cài extra:
+## OTA `.tgz`
 
 ```bash
-sudo python3 -m pip install 'cozmars-os[pi,vision,audio,web]'
+./scripts/pack.sh                    # source (OTA cũ)
+# Trên Pi ARM: sudo bash scripts/pack-fat.sh   → *-armhf-bundle.tgz (không pip trên robot)
 ```
 
-(từ cây source: `pip install -e '.[pi,vision,audio,web]'`)
+Dán URL file trên web Pi. Bundle `kind=arm-bundle` → `install-fat` (không pip). Không đóng `conf.json` đã cal vào tarball.
+
+## Release fat + image SD
+
+Hướng dẫn build đầy đủ: **[BUILD_RELEASE.md](BUILD_RELEASE.md)**
+
+- Fat ARM: `scripts/pack-fat.sh` (trên Pi) → `install-fat.sh` trên robot
+- SD image: `scripts/build-sd-image.sh` (PC + Docker, cần fat trước) → flash `.img.xz`

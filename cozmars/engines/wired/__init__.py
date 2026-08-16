@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 
 from cozmars.version import __version__
@@ -13,14 +14,19 @@ FW_STATIC = Path(__file__).resolve().parent / "firmware_static"
 class WiredEngine:
     name = "wired"
 
-    def __init__(self, robot, brain, cloud=None, update=None, host: str = "0.0.0.0", ports: tuple[int, ...] = (80, 8080)) -> None:
+    def __init__(self, robot, brain, cloud=None, update=None, camera=None, host: str = "0.0.0.0", ports: tuple[int, ...] = (80, 8080)) -> None:
         self.robot = robot
         self.brain = brain
         self.cloud = cloud
         self.update = update
+        self.camera = camera
         self.host = host
         self.ports = ports
         self._runner = None
+        self._wifi_runner = None
+        from .control import ControlSession
+
+        self.ctrl = ControlSession(self)
 
     async def start(self) -> None:
         try:
@@ -30,6 +36,10 @@ class WiredEngine:
             return
 
         async def index(_r):
+            from . import wifi_portal
+
+            if wifi_portal.is_hotspot_mode():
+                raise web.HTTPFound("/wifi")
             return web.FileResponse(STATIC / "index.html")
 
         async def about(_r):
@@ -39,6 +49,9 @@ class WiredEngine:
                     "version": __version__,
                     "engines": ["robot", "anim", "engine", "cloud", "switchboard", "wired", "camera", "update"],
                     "hal": getattr(self.robot.hal, "name", "?"),
+                    "wifi_portal": 8077,
+                    "wifi_hotspot_ip": "10.3.141.1",
+                    "wifi_hotspot_open": True,
                 }
             )
 
@@ -149,6 +162,12 @@ class WiredEngine:
 
             name = request.match_info["name"]
             path = request.match_info.get("path") or "state"
+            if name == "Control":
+                return await self.ctrl.handle(request, path)
+            if name == "JdocSettings":
+                from . import settings_api
+
+                return await settings_api.handle(self, request, path)
             uci = request.query.get("uci", "")
             if request.method == "POST":
                 try:
@@ -162,7 +181,10 @@ class WiredEngine:
             except ValueError as exc:
                 return web.json_response({"status": "error", "message": str(exc)}, status=400)
 
-        app = web.Application()
+        from . import wifi_portal
+
+        app = web.Application(client_max_size=8 * 1024 * 1024, middlewares=[wifi_portal.captive_middleware()])
+        wifi_portal.attach_routes(app)
         app.router.add_get("/", index)
         app.router.add_get("/about", about)
         app.router.add_post("/api/update", api_update)
@@ -175,6 +197,9 @@ class WiredEngine:
         app.router.add_post("/api/tts_idle", api_tts_idle)
         app.router.add_post("/api/mic", api_mic)
         app.router.add_post("/api/intent", api_intent)
+        app.router.add_get("/api/mods/Control/cam-stream", self.ctrl.cam_mjpeg)
+        app.router.add_get("/api/mods/Control/mic-stream", self.ctrl.ws_mic)
+        app.router.add_get("/api/mods/Control/robot-mic-stream", self.ctrl.ws_robot_mic)
         app.router.add_route("*", "/api/mods/{name}/{path}", api_mods)
         if STATIC.is_dir():
             app.router.add_static("/static", STATIC)
@@ -193,11 +218,20 @@ class WiredEngine:
             except OSError as exc:
                 print(f"[WIRED] bind :{port} fail — {exc}", flush=True)
         if started:
+            self.ctrl.start_tick(asyncio.get_running_loop())
             print(f"[WIRED] http://{self.host}:{started[0]}/  ports={started}", flush=True)
         else:
             print("[WIRED] không bind được port", flush=True)
 
+        # Portal WiFi riêng :8077 — LAN và hotspot đều vào được
+        from . import wifi_portal
+
+        self._wifi_runner = await wifi_portal.start_portal(self.host, wifi_portal.WIFI_PORT)
+
     async def stop(self) -> None:
+        if self._wifi_runner:
+            await self._wifi_runner.cleanup()
+            self._wifi_runner = None
         if self._runner:
             await self._runner.cleanup()
             self._runner = None

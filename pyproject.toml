@@ -18,6 +18,7 @@ web = ["aiohttp"]
 
 [project.scripts]
 cozmars = "cozmars.__main__:main"
+cozmars-bootanim = "cozmars.bootanim:main"
 
 [tool.setuptools.packages.find]
 include = ["cozmars*"]

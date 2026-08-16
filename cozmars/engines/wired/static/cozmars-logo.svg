@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Cozmars">
+  <defs>
+    <linearGradient id="face" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a2830"/>
+      <stop offset="55%" stop-color="#0c141a"/>
+      <stop offset="100%" stop-color="#060a0e"/>
+    </linearGradient>
+    <linearGradient id="eye" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7ef9ff"/>
+      <stop offset="45%" stop-color="#00e5ff"/>
+      <stop offset="100%" stop-color="#00b8d4"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="1.6" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect x="6" y="12" width="52" height="40" rx="8" ry="8" fill="url(#face)" stroke="#2a4a55" stroke-width="1.5"/>
+  <rect x="11" y="17" width="42" height="30" rx="4" ry="4" fill="#030608" opacity="0.95"/>
+  <g filter="url(#glow)">
+    <rect x="16" y="22" width="12" height="16" rx="3" fill="url(#eye)"/>
+    <rect x="36" y="22" width="12" height="16" rx="3" fill="url(#eye)"/>
+  </g>
+</svg>

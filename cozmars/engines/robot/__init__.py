@@ -30,6 +30,16 @@ class RobotEngine:
     def expression(self, name: str) -> None:
         self.hal.expression(name)
 
+    def face(self, frame: dict) -> None:
+        fn = getattr(self.hal, "face", None)
+        if callable(fn):
+            fn(frame)
+
+    def eye_color(self, name: str, hue: float, sat: float, rainbow: bool) -> None:
+        fn = getattr(self.hal, "eye_color", None)
+        if callable(fn):
+            fn(name, hue, sat, rainbow)
+
     def sensors(self) -> Dict[str, Any]:
         return self.hal.sensors()
 

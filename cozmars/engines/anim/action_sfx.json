@@ -90,6 +90,9 @@
   "wake_fail": [
     "Play__Robot_Vic_Sfx__Wake_Word_Fail"
   ],
+  "eye_color": [
+    "Play__Robot_Vic_Sfx__Eye_Color_Change"
+  ],
   "firetruck": [
     "Play__Robot_Vo__Codelab_Firetruck"
   ],

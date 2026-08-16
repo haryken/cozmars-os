@@ -9,6 +9,7 @@ TOOL_TO_INTENT = {
     "self.drive.right": "intent_imperative_turnright",
     "self.drive.stop": "intent_imperative_halt",
     "self.show.firetruck": "intent_play_firetruck",
+    "self.eyes.color": "intent_imperative_eyecolor",
     "self.show.dance": "intent_imperative_dance",
     "self.show.sing": "intent_imperative_sing",
     "self.cube.find": "intent_imperative_findcube",
@@ -45,6 +46,13 @@ def dispatch(brain, tool: str, args: dict) -> str:
         return "ok"
     if tool == "self.lift.set":
         brain.robot.lift(float(args.get("height", 0.5)))
+        return "ok"
+    if tool == "self.eyes.color":
+        color = str(args.get("color") or args.get("name") or "").strip()
+        if color:
+            brain.handle_intent("intent_imperative_eyecolor_specific_extend", {"color": color})
+        else:
+            brain.handle_intent("intent_imperative_eyecolor")
         return "ok"
     if tool == "self.volume.set":
         brain.handle_intent("intent_imperative_volumelevel_extend", {"level": float(args.get("level", 0.7))})

@@ -64,7 +64,7 @@ function buildNavDrawer() {
         navDrawerList.appendChild(btn);
     });
     const active = document.querySelector(".tabs button.active");
-    syncDrawerActive(active ? active.dataset.target : "#about");
+    syncDrawerActive(active ? active.dataset.target : "#botsettings");
 }
 
 function openNavDrawer() {
@@ -113,7 +113,7 @@ window.addEventListener("resize", () => {
 if (location.hash && document.querySelector(location.hash)) {
     activateSection(location.hash);
 } else {
-    activateSection("#about");
+    activateSection("#botsettings");
 }
 
 function xzSetStatus(elId, msg, isError) {

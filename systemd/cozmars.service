@@ -1,14 +1,14 @@
 [Unit]
 Description=Cozmars OS
-After=network-online.target sound.target
-Wants=network-online.target
+After=local-fs.target sound.target cozmars-bootanim.service network-pre.target
+Wants=cozmars-bootanim.service cozmars-autohotspot.service
 
 [Service]
 User=root
 WorkingDirectory=/home/pi
 Environment=PYTHONUNBUFFERED=1
 Environment=COZMARS_HAL=pi
-ExecStart=/usr/bin/env python3 -m cozmars --hal pi --web
+ExecStart=/opt/cozmars/venv/bin/python -m cozmars --hal pi --web
 Restart=always
 RestartSec=3
 

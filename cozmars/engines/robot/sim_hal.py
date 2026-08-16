@@ -17,7 +17,7 @@ class SimHal:
         self.url = (url or "http://127.0.0.1:8088").rstrip("/")
         self._timeout = 0.35
         self._last: Dict[str, Any] = {}
-        self._q: queue.Queue = queue.Queue(maxsize=48)
+        self._q: queue.Queue = queue.Queue(maxsize=96)
         self._alive = True
         threading.Thread(target=self._pump, name="sim-hal", daemon=True).start()
 
@@ -31,6 +31,17 @@ class SimHal:
             return round(float(body.get("height", 0)), 2)
         if op == "expression":
             return str(body.get("name") or "")
+        if op == "face":
+            left = body.get("L") or []
+            return (
+                round(float(body.get("a") or 0), 2),
+                round(float(body.get("cx") or 0), 1),
+                round(float(body.get("cy") or 0), 1),
+                round(float(body.get("sx") or 1), 2),
+                tuple(round(float(left[i]), 2) if i < len(left) else 0.0 for i in (0, 2, 3, 4, 13, 16)),
+            )
+        if op == "eye_color":
+            return (str(body.get("name") or ""), round(float(body.get("hue") or 0), 3), bool(body.get("rainbow")))
         if op == "backlight":
             return round(float(body.get("value", 0)), 2)
         if op == "speaker":
@@ -83,6 +94,20 @@ class SimHal:
     def expression(self, name: str) -> None:
         self._post({"op": "expression", "name": name})
 
+    def face(self, frame: dict) -> None:
+        self._post({"op": "face", **(frame or {})})
+
+    def eye_color(self, name: str, hue: float, sat: float, rainbow: bool) -> None:
+        self._post(
+            {
+                "op": "eye_color",
+                "name": name,
+                "hue": float(hue),
+                "sat": float(sat),
+                "rainbow": bool(rainbow),
+            }
+        )
+
     def backlight(self, value: float) -> None:
         self._post({"op": "backlight", "value": value})
 
@@ -99,6 +124,8 @@ class SimHal:
             return {"sonarCm": 50.0, "inRange": False, "lir": 1, "rir": 1, "cliff": 1, "button": False}
         s = snap.get("sensors") or {}
         extra["osIntent"] = (snap.get("software") or {}).get("osIntent")
+        extra["osCmd"] = (snap.get("software") or {}).get("osCmd")
+        extra["ctrlAssumed"] = bool((snap.get("software") or {}).get("ctrlAssumed"))
         return {
             "sonarCm": s.get("sonarCm", 50.0),
             "inRange": bool(s.get("inRange")),

@@ -1,0 +1,19 @@
+[Unit]
+Description=Cozmars boot splash (ST7789)
+DefaultDependencies=no
+After=local-fs.target
+Before=cozmars.service
+Conflicts=shutdown.target
+
+[Service]
+Type=simple
+User=root
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/cozmars/venv/bin/python -m cozmars.bootanim
+Restart=no
+KillSignal=SIGTERM
+TimeoutStopSec=2
+# Giữ frame cuối trên LCD (như vic-bootAnim).
+
+[Install]
+WantedBy=multi-user.target

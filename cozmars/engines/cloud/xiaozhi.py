@@ -937,12 +937,13 @@ async def _collect_reply(brain, ws, hint: str, first_wait: float = 8.0, total_wa
                 bye_pending = True
                 print("[CLOUD] Xiaozhi STT tạm biệt — đợi TTS rồi đóng phiên", flush=True)
             elif brain is not None:
-                from .matcher import match_show
+                from .matcher import match_now
 
-                intent = match_show(str(data.get("text") or ""))
-                if intent:
-                    print(f"[CLOUD] STT → {intent} (không đợi MCP)", flush=True)
-                    brain.handle_intent(intent)
+                hit = match_now(str(data.get("text") or ""))
+                if hit:
+                    intent, params = hit
+                    print(f"[CLOUD] STT → {intent} {params} (không đợi MCP)", flush=True)
+                    brain.handle_intent(intent, params)
         elif typ == "llm" and data.get("text"):
             got_any = True
             last_rx = time.monotonic()

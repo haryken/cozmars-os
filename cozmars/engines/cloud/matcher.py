@@ -33,6 +33,10 @@ PHRASES = {
     "hát đi": "intent_imperative_sing",
     "tìm khối": "intent_imperative_findcube",
     "chơi blackjack": "intent_play_blackjack",
+    "màu mắt": "intent_imperative_eyecolor",
+    "đổi màu mắt": "intent_imperative_eyecolor",
+    "eye color": "intent_imperative_eyecolor",
+    "change eye color": "intent_imperative_eyecolor",
 }
 
 
@@ -62,3 +66,56 @@ def match_show(text: str) -> str | None:
     """Show trong phiên Xiaozhi — không cần đợi MCP (LLM hay quên self.show.*)."""
     intent = match(text)
     return intent if intent in SHOW_INTENTS else None
+
+
+NOW_INTENTS = SHOW_INTENTS | {
+    "intent_imperative_eyecolor",
+    "intent_imperative_eyecolor_specific",
+    "intent_imperative_eyecolor_specific_extend",
+}
+
+_COLOR_WORDS = (
+    ("cầu vồng", "RAINBOW_EYES"),
+    ("rainbow", "RAINBOW_EYES"),
+    ("xanh ngọc", "TIP_OVER_TEAL"),
+    ("xanh dương", "SINGULARITY_SAPPHIRE"),
+    ("xanh lam", "SINGULARITY_SAPPHIRE"),
+    ("xanh lá", "CONFUSION_MATRIX_GREEN"),
+    ("sapphire", "SINGULARITY_SAPPHIRE"),
+    ("tím", "FALSE_POSITIVE_PURPLE"),
+    ("purple", "FALSE_POSITIVE_PURPLE"),
+    ("cam", "OVERFIT_ORANGE"),
+    ("orange", "OVERFIT_ORANGE"),
+    ("vàng", "UNCANNY_YELLOW"),
+    ("yellow", "UNCANNY_YELLOW"),
+    ("lime", "NON_LINEAR_LIME"),
+    ("teal", "TIP_OVER_TEAL"),
+    ("cyan", "TIP_OVER_TEAL"),
+    ("đỏ", "ROBOT_RED"),
+    ("red", "ROBOT_RED"),
+    ("xanh", "TIP_OVER_TEAL"),
+)
+
+
+def match_eye_color(text: str) -> tuple[str, dict] | None:
+    t = (text or "").strip().lower()
+    if not t:
+        return None
+    talking_eyes = any(k in t for k in ("mắt", "eye color", "eyecolor", "màu mắt", "đổi màu"))
+    for word, color in _COLOR_WORDS:
+        if word in t and (talking_eyes or word in ("màu mắt", "đổi màu mắt")):
+            return "intent_imperative_eyecolor_specific_extend", {"color": color}
+    if talking_eyes and any(k in t for k in ("màu", "color", "đổi")):
+        return "intent_imperative_eyecolor", {}
+    return None
+
+
+def match_now(text: str) -> tuple[str, dict] | None:
+    """Intent chạy ngay trong phiên Xiaozhi — không đợi MCP."""
+    eye = match_eye_color(text)
+    if eye:
+        return eye
+    intent = match_show(text)
+    if intent:
+        return intent, {}
+    return None

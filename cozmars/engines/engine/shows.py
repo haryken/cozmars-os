@@ -85,11 +85,15 @@ async def _play_clip(robot, anim, clip: dict) -> None:
         while ai < len(audio) and t_ms >= float(audio[ai]["t"]):
             anim.play_sfx(str(audio[ai]["e"]), tag="show")
             ai += 1
-        while fi < len(face) and t_ms >= float(face[fi]["t"]):
-            expr = str(face[fi]["e"])
-            if expr != last_face:
-                anim.set_expression(expr)
-                last_face = expr
+        while fi < len(face) and t_ms >= float(face[fi].get("t") or 0):
+            fr = face[fi]
+            if fr.get("L") or fr.get("R"):
+                anim.set_face(fr)
+            elif fr.get("e"):
+                expr = str(fr["e"])
+                if expr != last_face:
+                    anim.set_expression(expr)
+                    last_face = expr
             fi += 1
         lr = _body_lr(body, t_ms)
         if lr != last_lr:

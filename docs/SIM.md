@@ -95,6 +95,21 @@ Nếu OTA trả mã 6 số: ghép trên https://xiaozhi.me rồi nói lại.
 
 Hardware log bên cạnh vẫn là GPIO ảo (DRIVE/HEAD/SONAR).
 
+## Boot splash (logo lúc chờ OS)
+
+Sim không có LCD SPI. Splash **ảo** vẽ lên canvas ST7789 240×135 và mặt robot 3D — cùng chữ “Cozmars + serial + chấm nhấp”.
+
+1. Mở http://127.0.0.1:8088/ (hard-refresh).
+2. **Xem splash** — 5 giây, không cần nạp OS.
+3. **Nạp cozmars-os** + **Chạy thực tế** — splash từ lúc spawn đến khi OS sẵn sàng (`[BOOT] sim splash off` trên OS console).
+
+GIF từ đúng code Pi (không cần sim đang chạy):
+
+```bash
+cd /home/linh/Projects/cozmars-os
+PYTHONPATH=. python3 -m cozmars.bootanim --preview
+```
+
 ## Gỡ rối
 
 | Hiện tượng | Việc |

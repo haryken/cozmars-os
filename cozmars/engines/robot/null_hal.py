@@ -28,6 +28,12 @@ class NullHal:
     def expression(self, name: str) -> None:
         print(f"[HAL] expression {name}", flush=True)
 
+    def face(self, frame: dict) -> None:
+        pass
+
+    def eye_color(self, name: str, hue: float, sat: float, rainbow: bool) -> None:
+        print(f"[HAL] eye color {name} hue={hue:.2f} rainbow={int(rainbow)}", flush=True)
+
     def backlight(self, value: float) -> None:
         print(f"[HAL] backlight {value:.2f}", flush=True)
 
