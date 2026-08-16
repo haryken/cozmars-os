@@ -22,11 +22,14 @@ if [[ -z "$BUNDLE" || ! -f "$BUNDLE" ]]; then
   cat >&2 <<EOF
 [build-sd] ERROR: chưa có gói fat ARM.
 
-1) Trên Pi Zero 2W / Pi ARM:
-     sudo bash scripts/pack-fat.sh
-2) Copy file dist/cozmars-*-bundle.tgz về laptop
-3) Chạy lại:
-     ./scripts/build-sd-image.sh /path/to/cozmars-*-bundle.tgz
+Không có Pi? Trên laptop (cần Docker):
+  ./scripts/pack-fat-docker.sh
+  ./scripts/build-sd-image.sh dist/cozmars-*-bundle.tgz
+
+Có Pi:
+  1) sudo bash scripts/pack-fat.sh   (trên Pi)
+  2) scp về laptop → dist/
+  3) ./scripts/build-sd-image.sh /path/to/cozmars-*-bundle.tgz
 EOF
   exit 1
 fi

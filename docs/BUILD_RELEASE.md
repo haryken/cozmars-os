@@ -16,21 +16,34 @@ OTA web (`.tgz` source cũ) vẫn còn; gói `kind=arm-bundle` thì `UpdateEngin
 
 ---
 
-## 1) Build gói fat ARM (trên Pi)
+## 1) Build gói fat ARM
+
+### A. Không có Pi — Docker trên laptop (x86)
+
+Cần Docker đang chạy. Mặc định giả **Pi Zero 2W + Pi OS Lite 32-bit** (armhf / Bullseye userspace) — đủ để đóng venv ARM. **Không** giả GPIO/SPI/WiFi/cam.
 
 ```bash
-# SSH vào Pi Zero 2W (hoặc Pi ARM), clone/rsync cozmars-os
+cd /home/linh/Projects/cozmars-os
+chmod +x scripts/pack-fat-docker.sh
+./scripts/pack-fat-docker.sh
+# → dist/cozmars-1.6.0-armhf-bundle.tgz
+# RAM container mặc định 512m (như Zero 2W). OOM: MEM_LIMIT=1g ./scripts/pack-fat-docker.sh
+```
+
+### B. Có Pi Zero 2W / Pi ARM
+
+```bash
+# SSH vào Pi, clone/rsync cozmars-os
 cd /path/to/cozmars-os
 sudo bash scripts/pack-fat.sh
 # → dist/cozmars-1.6.0-armhf-bundle.tgz  (hoặc aarch64)
 ```
 
-Script từ chối chạy trên x86. Bên trong: apt + venv + pip **một lần trên máy build**, rồi đóng tar.
+Script `pack-fat.sh` từ chối chạy trực tiếp trên x86 (trỏ sang `pack-fat-docker.sh`).
 
-### Cài fat lên robot khác (không pip)
+### Cài fat lên robot (không pip)
 
 ```bash
-# Copy .tgz sang robot đích
 sudo bash scripts/install-fat.sh /path/to/cozmars-*-bundle.tgz
 ```
 

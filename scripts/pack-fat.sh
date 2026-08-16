@@ -8,7 +8,12 @@ ARCH="$(uname -m)"
 case "$ARCH" in
   armv7l|armhf|aarch64|arm64) ;;
   *)
-    echo "[pack-fat] ERROR: cần máy ARM (hiện tại $ARCH). Chạy trên Pi Zero 2W / Pi ARM." >&2
+    cat >&2 <<EOF
+[pack-fat] ERROR: cần máy ARM (hiện tại $ARCH).
+
+Không có Pi Zero? Trên laptop/WSL dùng Docker giả ARM:
+  ./scripts/pack-fat-docker.sh
+EOF
     exit 1
     ;;
 esac
