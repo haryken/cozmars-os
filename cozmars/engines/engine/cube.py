@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncio
 
+from ..robot.cliff import should_stop
+
 
 async def run(robot, anim, action: str) -> None:
     anim.from_action("search_cube")
@@ -29,6 +31,10 @@ async def run(robot, anim, action: str) -> None:
                 robot.speed(0.3, -0.3)
                 await asyncio.sleep(0.4)
             robot.lift(0)
+            return
+        if should_stop(s, True):
+            robot.stop()
+            print("[CUBE] abort — cliff", flush=True)
             return
         robot.speed(-0.28 if i % 2 == 0 else 0.28, 0.28 if i % 2 == 0 else -0.28)
         await asyncio.sleep(0.35)

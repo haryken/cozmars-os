@@ -8,7 +8,8 @@ import time
 
 from . import intents, shows
 from .explore import Explore
-from ..robot.cliff import should_stop
+from .mood import Mood
+from ..robot.cliff import CliffReactor
 
 
 class BrainEngine:
@@ -21,7 +22,9 @@ class BrainEngine:
         self.mode = "boot"
         self.t0 = time.monotonic()
         self.running = True
-        self.explore = Explore(robot)
+        self.mood = Mood()
+        self.explore = Explore(robot, anim, self.mood)
+        self.cliff = CliffReactor(robot, anim, self.mood)
         self._intent_q: asyncio.Queue[tuple[str, dict]] = asyncio.Queue()
 
     def handle_intent(self, name: str, params: dict | None = None) -> None:
@@ -53,12 +56,16 @@ class BrainEngine:
                     hal._post({"op": "os_intent_ack"})
                 self.request(str(intent))
             elapsed = time.monotonic() - self.t0
-            cliff_on = bool(self.env.get("cliff_stop"))
-            if should_stop(sensors, cliff_on):
-                self.anim.from_action("cliff")
-                self.robot.speed(-0.35, -0.35)
-                self.robot.lift(0.55)
-            elif sensors.get("inRange") and self.mode in ("boot", "idle", "explore"):
+            cliff_on = bool(self.env.get("cliff_stop", True))
+            was_cliff = self.cliff.owning
+            if self.cliff.tick(sensors, cliff_on):
+                if self.mode == "explore" and self.cliff.just_started:
+                    self.explore.notify_cliff(self.cliff.side)
+            elif was_cliff and self.mode == "explore":
+                self.explore.after_cliff(self.cliff.side)
+            elif self.mode == "explore":
+                self.explore.tick(elapsed, sensors)
+            elif sensors.get("inRange") and self.mode in ("boot", "idle"):
                 self.anim.from_action("obstacle")
                 self.robot.speed(-0.22, 0.42)
                 self.robot.head(12)
@@ -66,10 +73,19 @@ class BrainEngine:
                 self._boot(elapsed)
             elif self.mode == "idle":
                 self._idle(elapsed)
-            elif self.mode == "explore":
-                self.explore.tick(elapsed, sensors)
             elif self.mode == "show":
                 pass
+            await asyncio.sleep(0.05)
+
+    async def _sleep_motion(self, seconds: float) -> None:
+        t0 = time.monotonic()
+        on = bool(self.env.get("cliff_stop", True))
+        while time.monotonic() - t0 < seconds and self.running:
+            s = self.robot.sensors()
+            if self.cliff.tick(s, on):
+                while self.running and self.cliff.tick(self.robot.sensors(), on):
+                    await asyncio.sleep(0.05)
+                return
             await asyncio.sleep(0.05)
 
     def _boot(self, t: float) -> None:
@@ -92,6 +108,7 @@ class BrainEngine:
             self.anim.from_action("idle")
 
     def _idle(self, t: float) -> None:
+        self.mood.decay(0.05, exploring=False)
         self.robot.speed(0, 0)
         self.robot.head(10 * math.sin(t * 0.55))
         self.robot.lift(0.06 + 0.05 * (0.5 + 0.5 * math.sin(t * 0.32)))
@@ -116,17 +133,17 @@ class BrainEngine:
         elif action == "explore":
             self.mode = "explore"
             self.t0 = time.monotonic()
-            self.anim.from_action("explore")
+            self.explore.start()
         elif action == "forward":
             self.anim.play_action("forward")
             self.robot.speed(0.45, 0.45)
-            await asyncio.sleep(1.2)
+            await self._sleep_motion(1.2)
             self.robot.stop()
             self.mode = "idle"
         elif action == "backup":
             self.anim.play_action("backward")
             self.robot.speed(-0.4, -0.4)
-            await asyncio.sleep(1.0)
+            await self._sleep_motion(1.0)
             self.robot.stop()
             self.mode = "idle"
         elif action in ("turn_left", "turn_right", "turn_around"):
@@ -134,7 +151,7 @@ class BrainEngine:
             s = 0.45 if action != "turn_right" else -0.45
             dur = 1.6 if action == "turn_around" else 0.7
             self.robot.speed(-s, s)
-            await asyncio.sleep(dur)
+            await self._sleep_motion(dur)
             self.robot.stop()
             self.mode = "idle"
         elif action in ("come", "nod"):
@@ -151,6 +168,7 @@ class BrainEngine:
             await shows.lift_show(self.robot, self.anim)
             self.mode = "idle"
         elif action == "firetruck":
+            self.mood.event("firetruck")
             await shows.firetruck(self.robot, self.anim)
             self.mode = "idle"
         elif action == "dance":
@@ -171,12 +189,14 @@ class BrainEngine:
             await shows.sleep_show(self.robot, self.anim)
             self.mode = "idle"
         elif action in ("happy",):
+            self.mood.event("praise")
             self.anim.from_action("hello")
-            self.anim.play_action("eye_happy")
+            self.anim.play_mood("happy", self.mood.stimulated)
             self.mode = "idle"
         elif action in ("scold", "sad"):
+            self.mood.event("scold")
             self.anim.set_expression("sad")
-            self.anim.play_action("eye_sad")
+            self.anim.play_mood("sad", self.mood.stimulated)
             self.mode = "idle"
         elif action == "quiet":
             self.anim.volume = 0

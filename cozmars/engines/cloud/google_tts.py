@@ -13,6 +13,8 @@ import urllib.parse
 import urllib.request
 
 _cmd_q: queue.Queue | None = None
+_sfx_q: queue.Queue | None = None
+_mic_listen: dict | None = None
 _play_samples = 0
 _play_rate = 24000
 _play_t0: float | None = None
@@ -31,9 +33,32 @@ def _ensure_worker() -> None:
             body = _cmd_q.get()
             if body is None:
                 continue
+            if body.get("op") == "mic_listen":
+                latest = _mic_listen
+                if latest is None:
+                    continue
+                if latest.get("gen") != body.get("gen"):
+                    continue
+                body = latest
             _post_sim(body)
 
     threading.Thread(target=_run, daemon=True, name="sim-tts").start()
+
+
+def _ensure_sfx_worker() -> None:
+    global _sfx_q
+    if _sfx_q is not None:
+        return
+    _sfx_q = queue.Queue()
+
+    def _run() -> None:
+        while True:
+            body = _sfx_q.get()
+            if body is None:
+                continue
+            _post_sim(body)
+
+    threading.Thread(target=_run, daemon=True, name="sim-sfx").start()
 
 
 def _post_sim(body: dict) -> None:
@@ -61,13 +86,37 @@ def sim_cmd(body: dict) -> None:
 
 
 def sim_mic_listen(on: bool, idle: bool = False, reason: str = "") -> None:
-    sim_cmd({"op": "mic_listen", "on": on, "idle": idle, "reason": reason, "source": "os"})
+    global _mic_listen
+    gen = int((_mic_listen or {}).get("gen") or 0) + 1
+    body = {"op": "mic_listen", "on": on, "idle": idle, "reason": reason, "source": "os", "gen": gen}
+    _mic_listen = body
+    sim_cmd(body)
 
 
-def play_bytes(text: str, data: bytes | None, mime: str = "audio/mpeg", lang: str = "vi", stream: bool = False) -> None:
-    body: dict = {"op": "tts", "text": text, "lang": lang, "source": "os", "mime": mime, "stream": stream}
+def play_bytes(
+    text: str,
+    data: bytes | None,
+    mime: str = "audio/mpeg",
+    lang: str = "vi",
+    stream: bool = False,
+    kind: str = "tts",
+) -> None:
+    body: dict = {
+        "op": "tts",
+        "text": text,
+        "lang": lang,
+        "source": "os",
+        "mime": mime,
+        "stream": stream,
+        "kind": kind,
+    }
     if data:
         body["b64"] = base64.b64encode(data).decode("ascii")
+    if kind == "sfx":
+        _ensure_sfx_worker()
+        assert _sfx_q is not None
+        _sfx_q.put(body)
+        return
     sim_cmd(body)
 
 

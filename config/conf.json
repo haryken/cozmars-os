@@ -18,5 +18,5 @@
     "update_rate": 20
   },
   "sonar": { "echo": 13, "trigger": 26, "max": 0.5, "threshold": 0.1 },
-  "cliff": { "enabled": false, "note": "GPIO 0/1 khi có HW; mặc định off" }
+  "cliff": { "enabled": true, "note": "2 IR sàn trước GPIO 12/16; 1=sàn 0=vực; không có IR sau" }
 }

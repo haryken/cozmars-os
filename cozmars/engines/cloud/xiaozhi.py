@@ -171,7 +171,7 @@ def probe() -> dict:
         print(f"[CLOUD] MISS aiohttp — Xiaozhi WS chưa mở ({exc})", flush=True)
         cfg["ws_lib"] = False
     print(
-        f"[CLOUD] Xiaozhi ota={cfg['ota_base_url']} id={cfg['device_id']} "
+        f"[CLOUD] Xiaozhi keep-WSS v2 ota={cfg['ota_base_url']} id={cfg['device_id']} "
         f"endpoint={cfg.get('endpoint') or '(chưa)'}",
         flush=True,
     )
@@ -428,6 +428,8 @@ async def chat(brain, text: str) -> dict:
         code = cfg["activation_code"]
         return {"text": f"Chưa liên kết Xiaozhi. Vào xiaozhi.me nhập mã {code}.", "played": False}
 
+    from . import google_tts
+
     async with _turn_lock:
         if _dialog_active:
             print("[CLOUD] Xiaozhi bỏ qua wake — đang trong phiên", flush=True)
@@ -437,12 +439,14 @@ async def chat(brain, text: str) -> dict:
         try:
             try:
                 reply, played = await _dialog(brain, cfg, None if audio else utterance)
+            except asyncio.CancelledError:
+                print("[CLOUD] Xiaozhi wake bị cancel — nối lại session", flush=True)
+                await _close_ws()
+                _session_bye = False
+                reply, played = await _dialog(brain, load_cfg(), None if audio else utterance)
             except Exception as exc:  # noqa: BLE001
                 print(f"[CLOUD] Xiaozhi turn fail: {exc}", flush=True)
                 await _close_ws()
-                from . import google_tts
-
-                google_tts.sim_mic_listen(False, idle=True)
                 if _session_bye:
                     return {"text": "", "played": False, "path": "xiaozhi-bye"}
                 ota_hello()
@@ -451,11 +455,12 @@ async def chat(brain, text: str) -> dict:
                     reply, played = await _dialog(brain, load_cfg(), None if audio else utterance)
                 except Exception as exc2:  # noqa: BLE001
                     print(f"[CLOUD] Xiaozhi retry fail: {exc2}", flush=True)
-                    google_tts.sim_mic_listen(False, idle=True)
                     return {"text": f"Không nối được Xiaozhi: {exc2}", "played": False}
             return {"text": reply, "played": played, "path": "xiaozhi"}
         finally:
             _dialog_active = False
+            google_tts.sim_mic_listen(False, idle=True)
+            await _close_ws()
 
 
 async def _ensure_ws(cfg: dict[str, Any]):
@@ -513,6 +518,7 @@ async def _ensure_ws(cfg: dict[str, Any]):
 
 
 async def _ws_reader() -> None:
+    import asyncio
     from aiohttp import WSMsgType
 
     assert _ws is not None and _inbox is not None
@@ -522,6 +528,8 @@ async def _ws_reader() -> None:
             await _inbox.put(msg)
             if msg.type in (WSMsgType.CLOSED, WSMsgType.ERROR, WSMsgType.CLOSING):
                 break
+    except asyncio.CancelledError:
+        return
     except Exception as exc:  # noqa: BLE001
         print(f"[CLOUD] Xiaozhi reader: {exc}", flush=True)
         if _inbox is not None:
@@ -529,28 +537,32 @@ async def _ws_reader() -> None:
 
 
 async def _close_ws() -> None:
+    """Tear down WSS without cancelling the caller (Python 3.9+ CancelledError)."""
+    import asyncio
+
     global _ws, _session, _session_id, _inbox, _reader_task
-    if _reader_task is not None:
-        _reader_task.cancel()
-        try:
-            await _reader_task
-        except Exception:
-            pass
-        _reader_task = None
-    if _ws is not None:
-        try:
-            await _ws.close()
-        except Exception:
-            pass
-        _ws = None
-    if _session is not None:
-        try:
-            await _session.close()
-        except Exception:
-            pass
-        _session = None
+    task, ws, session = _reader_task, _ws, _session
+    _reader_task = None
+    _ws = None
+    _session = None
     _session_id = ""
     _inbox = None
+    if task is not None and not task.done():
+        task.cancel()
+        try:
+            await asyncio.wait({task}, timeout=1.0)
+        except (asyncio.CancelledError, Exception):
+            pass
+    if ws is not None:
+        try:
+            await ws.close()
+        except (asyncio.CancelledError, Exception):
+            pass
+    if session is not None:
+        try:
+            await session.close()
+        except (asyncio.CancelledError, Exception):
+            pass
 
 
 async def _drain_inbox() -> None:
@@ -578,55 +590,52 @@ async def _dialog(brain, cfg: dict[str, Any], first_text: str | None) -> tuple[s
     global _session_bye
     parts: list[str] = []
     played_any = False
-    try:
-        await _close_ws()
-        seed = (first_text or "").strip() or "xin chào"
-        print(f"[CLOUD] Xiaozhi wake → listen detect {seed!r}", flush=True)
-        reply, played = await _ws_turn(brain, cfg, seed)
-        if reply:
-            parts.append(reply)
-        played_any |= played
+    # WireOS EnsureConnected: reuse WSS across listen rounds. Do not close on wake.
+    google_tts.sim_mic_listen(False, reason="đang nối cloud")
+    seed = (first_text or "").strip() or "xin chào"
+    print(f"[CLOUD] Xiaozhi wake → listen detect {seed!r}", flush=True)
+    reply, played = await _ws_turn(brain, cfg, seed)
+    if reply:
+        parts.append(reply)
+    played_any |= played
+    if _session_bye:
+        print("[CLOUD] Xiaozhi tạm biệt — đóng mic, chờ wake", flush=True)
+        return " ".join(parts).strip(), played_any
+    for n in range(20):
         if _session_bye:
-            print("[CLOUD] Xiaozhi tạm biệt — đóng mic, chờ wake", flush=True)
-            return " ".join(parts).strip(), played_any
-        for n in range(20):
-            if _session_bye:
-                break
-            if _inbox is not None and not _inbox.empty():
-                print("[CLOUD] Xiaozhi còn audio/TTS — phát tiếp, chưa bật mic", flush=True)
-                reply, played = await _collect_reply(brain, await _ensure_ws(cfg), "", first_wait=3.0)
-                if _session_bye:
-                    print("[CLOUD] Xiaozhi tạm biệt — đóng mic, chờ wake", flush=True)
-                    if reply:
-                        parts.append(reply)
-                    played_any |= played
-                    break
-                if played or reply:
-                    if reply:
-                        parts.append(reply)
-                    played_any |= played
-                    print("[CLOUD] Xiaozhi relisten after playback", flush=True)
-                    continue
-            reply, played, heard = await _audio_turn(brain, cfg, use_pre=False)
+            break
+        if _inbox is not None and not _inbox.empty():
+            print("[CLOUD] Xiaozhi còn audio/TTS — phát tiếp, chưa bật mic", flush=True)
+            reply, played = await _collect_reply(brain, await _ensure_ws(cfg), "", first_wait=3.0)
             if _session_bye:
                 print("[CLOUD] Xiaozhi tạm biệt — đóng mic, chờ wake", flush=True)
                 if reply:
                     parts.append(reply)
                 played_any |= played
                 break
-            if not heard:
-                if played_any and n == 0:
-                    print("[CLOUD] Xiaozhi chưa nghe câu — bật mic nghe lại", flush=True)
-                    continue
-                print("[CLOUD] Xiaozhi hết phiên — đóng WSS, chờ đánh thức", flush=True)
-                break
+            if played or reply:
+                if reply:
+                    parts.append(reply)
+                played_any |= played
+                print("[CLOUD] Xiaozhi relisten after playback", flush=True)
+                continue
+        reply, played, heard = await _audio_turn(brain, cfg, use_pre=False)
+        if _session_bye:
+            print("[CLOUD] Xiaozhi tạm biệt — đóng mic, chờ wake", flush=True)
             if reply:
                 parts.append(reply)
             played_any |= played
-            print("[CLOUD] Xiaozhi relisten after playback", flush=True)
-    finally:
-        google_tts.sim_mic_listen(False, idle=True)
-        await _close_ws()
+            break
+        if not heard:
+            if played_any and n == 0:
+                print("[CLOUD] Xiaozhi chưa nghe câu — bật mic nghe lại", flush=True)
+                continue
+            print("[CLOUD] Xiaozhi hết phiên — đóng WSS, chờ đánh thức", flush=True)
+            break
+        if reply:
+            parts.append(reply)
+        played_any |= played
+        print("[CLOUD] Xiaozhi relisten after playback", flush=True)
     return " ".join(parts).strip(), played_any
 
 
@@ -894,7 +903,6 @@ async def _collect_reply(brain, ws, hint: str, first_wait: float = 8.0, total_wa
         if msg.type in (WSMsgType.CLOSED, WSMsgType.ERROR, WSMsgType.CLOSING):
             _session_bye = True
             print("[CLOUD] Xiaozhi WSS đóng — hết phiên, chờ đánh thức", flush=True)
-            await _close_ws()
             break
         if msg.type != WSMsgType.TEXT:
             continue
@@ -939,7 +947,6 @@ async def _collect_reply(brain, ws, hint: str, first_wait: float = 8.0, total_wa
         elif typ == "goodbye":
             _session_bye = True
             print("[CLOUD] Xiaozhi goodbye — đóng WSS + mic, chờ đánh thức", flush=True)
-            await _close_ws()
             break
 
     _flush(final=True)

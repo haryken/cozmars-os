@@ -2,6 +2,34 @@
   "boot": [
     "Play__Robot_Vic_Sfx__Wake_Word_On"
   ],
+  "explore": [
+    "Play__Robot_Vic_Sfx__Tread_Happy"
+  ],
+  "look_around": [
+    "Play__Robot_Vic_Sfx__Gazing_Scan",
+    "Play__Robot_Vic_Sfx__Emote_Curious_Short"
+  ],
+  "explore_huh": [
+    "Play__Robot_Vic_Sfx__Emote_Curious_Long"
+  ],
+  "explore_scan": [
+    "Play__Robot_Vic_Sfx__Gazing_Scan"
+  ],
+  "hello": [
+    "Play__Robot_Vic_Sfx__Emote_Greeting_Hello"
+  ],
+  "dance": [
+    "Play__Robot_Vic_Sfx__Lift_High_Dancing_Big"
+  ],
+  "obstacle": [
+    "Play__Robot_Vic_Sfx__Cant_Do"
+  ],
+  "cliff": [
+    "Play__Robot_Vic_Sfx__Emote_Sad_Short"
+  ],
+  "nod": [
+    "Play__Robot_Vic_Sfx__Emote_Happy_Short"
+  ],
   "shutdown": [
     "Play__Robot_Vic_Sfx__Attention_Device_Loop_Play"
   ],

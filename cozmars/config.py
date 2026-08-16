@@ -28,6 +28,14 @@ def load() -> Tuple[Dict[str, Any], Dict[str, Any], Path]:
         env_dst.write_text(env_src.read_text(encoding="utf-8"), encoding="utf-8")
     conf = json.loads(conf_dst.read_text(encoding="utf-8") if conf_dst.exists() else conf_src.read_text(encoding="utf-8"))
     env = json.loads(env_dst.read_text(encoding="utf-8") if env_dst.exists() else env_src.read_text(encoding="utf-8"))
+    src_conf = json.loads(conf_src.read_text(encoding="utf-8")) if conf_src.exists() else {}
+    src_env = json.loads(env_src.read_text(encoding="utf-8")) if env_src.exists() else {}
+    if src_env.get("cliff_stop") and not env.get("cliff_stop"):
+        env["cliff_stop"] = True
+        save_env(env)
+    if src_conf.get("cliff") and not conf.get("cliff"):
+        conf["cliff"] = src_conf["cliff"]
+        conf_dst.write_text(json.dumps(conf, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return conf, env, home
 
 

@@ -23,7 +23,7 @@ class CloudEngine:
             xiaozhi.ota_hello()
 
     async def handle_wake(self, source: str = "button", text: str = "") -> dict:
-        wake.earcon(source)
+        wake.earcon(source, getattr(self.brain, "anim", None))
         print(f"[CLOUD] wake source={source} text={text!r} mode={self.mode}", flush=True)
         leftover = xiaozhi.strip_wake(text)
         if source == "energy":

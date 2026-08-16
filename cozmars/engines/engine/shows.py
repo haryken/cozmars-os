@@ -7,6 +7,13 @@ import math
 import time
 
 
+def _over_cliff(robot) -> bool:
+    from ..robot.cliff import flags
+
+    left, right = flags(robot.sensors())
+    return left or right
+
+
 async def nod(robot, anim) -> None:
     anim.from_action("hello")
     for _ in range(6):
@@ -32,20 +39,37 @@ async def firetruck(robot, anim) -> None:
     print("[SHOW] firetruck ~12s", flush=True)
     anim.from_action("firetruck")
     t0 = time.monotonic()
+    last_sfx = t0
+    aborted = False
     while time.monotonic() - t0 < 12:
+        if _over_cliff(robot):
+            print("[SHOW] firetruck abort — cliff", flush=True)
+            aborted = True
+            robot.stop()
+            break
         t = time.monotonic() - t0
         robot.speed(0.48, 0.22 if int(t * 5) % 2 == 0 else 0.58)
         robot.head(20 if int(t * 4) % 2 == 0 else -10)
+        now = time.monotonic()
+        if now - last_sfx >= 1.4:
+            anim.play_sfx("Play__Robot_Vic_Sfx__Distress_Alert")
+            last_sfx = now
         await asyncio.sleep(0.18)
     robot.stop()
     robot.head(0)
+    if aborted:
+        return
     anim.set_expression("happy")
+    anim.play_action("eye_happy")
 
 
 async def dance(robot, anim) -> None:
     print("[SHOW] dance", flush=True)
     anim.from_action("dance")
     for i in range(10):
+        if _over_cliff(robot):
+            print("[SHOW] dance abort — cliff", flush=True)
+            break
         robot.speed(0.35 if i % 2 == 0 else -0.35, -0.35 if i % 2 == 0 else 0.35)
         robot.lift(1.0 if i % 2 == 0 else 0.05)
         robot.head(18 if i % 2 == 0 else -14)
@@ -69,14 +93,19 @@ async def come(robot, anim) -> None:
     anim.from_action("hello")
     anim.play_action("forward")
     t0 = time.monotonic()
+    hit_cliff = False
     while time.monotonic() - t0 < 4:
         s = robot.sensors()
         if s.get("inRange"):
             break
+        if _over_cliff(robot):
+            hit_cliff = True
+            break
         robot.speed(0.4, 0.4)
         await asyncio.sleep(0.08)
     robot.stop()
-    await nod(robot, anim)
+    if not hit_cliff:
+        await nod(robot, anim)
 
 
 async def lookatme(robot, anim) -> None:

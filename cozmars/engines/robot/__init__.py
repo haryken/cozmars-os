@@ -12,8 +12,12 @@ class RobotEngine:
 
     def __init__(self, hal: Hal) -> None:
         self.hal = hal
+        self.last_left = 0.0
+        self.last_right = 0.0
 
     def speed(self, left: float, right: float) -> None:
+        self.last_left = left
+        self.last_right = right
         self.hal.speed(left, right)
 
     def head(self, angle: float) -> None:
@@ -29,6 +33,8 @@ class RobotEngine:
         return self.hal.sensors()
 
     def stop(self) -> None:
+        self.last_left = 0.0
+        self.last_right = 0.0
         self.hal.speed(0, 0)
 
     def speaker_power(self, on: bool) -> None:
