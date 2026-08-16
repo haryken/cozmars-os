@@ -118,6 +118,11 @@ async def _amain(args: argparse.Namespace) -> None:
         f"anim engine cloud switchboard wired={'on' if wired else 'off'} update",
         flush=True,
     )
+    if kind == "pi":
+        try:
+            update.mark_boot_ok()
+        except Exception:
+            pass
     _stop_bootanim(kind)
     stop = asyncio.Event()
 

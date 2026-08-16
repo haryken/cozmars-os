@@ -8,6 +8,8 @@ User=root
 WorkingDirectory=/home/pi
 Environment=PYTHONUNBUFFERED=1
 Environment=COZMARS_HAL=pi
+Environment=PYTHONPATH=/opt/cozmars/src
+ExecStartPre=/usr/local/bin/cozmars-boot-guard
 ExecStart=/opt/cozmars/venv/bin/python -m cozmars --hal pi --web
 Restart=always
 RestartSec=3

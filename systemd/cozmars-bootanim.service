@@ -9,6 +9,7 @@ Conflicts=shutdown.target
 Type=simple
 User=root
 Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONPATH=/opt/cozmars/src
 ExecStart=/opt/cozmars/venv/bin/python -m cozmars.bootanim
 Restart=no
 KillSignal=SIGTERM

@@ -62,6 +62,15 @@ Chi tiết đầy đủ: **[docs/BUILD_RELEASE.md](docs/BUILD_RELEASE.md)**
 | **Fat ARM** | `./scripts/pack-fat-docker.sh` | **Laptop + Docker** (không cần Pi) | cùng tên bundle |
 | **SD image** | `./scripts/build-sd-image.sh dist/…-bundle.tgz` | Laptop + Docker (cần fat trước) | `cozmars-<ver>-pi-zero2w.img.xz` |
 
+### Cập nhật từ xa (OTA web) — giống WireOS
+
+Hướng dẫn đầy đủ: **[docs/UPDATE.md](docs/UPDATE.md)**
+
+1. Build **Fat ARM** → lấy file **`dist/cozmars-<ver>-armhf-bundle.tgz`** (không dùng `.img.xz` trên web).
+2. Host file lên http/https (Release / LAN).
+3. Mở web robot → **Cập nhật OS** → dán URL → đợi thanh tiến trình + log tới **100%**.
+4. Slot A/B: ghi slot nghỉ; cúp điện giữa chừng không xoá bản đang chạy; boot lỗi → rollback.
+
 ### A. Có Pi Zero 2W
 
 ```bash
@@ -105,7 +114,7 @@ Thứ tự: **fat trước → image sau**. Không có file bundle thì `build-s
 | switchboard | RPC |
 | wired | Web :80/:8080 (sim :8099), WiFi :8077 |
 | camera | CSI |
-| update | OTA `.tgz` / arm-bundle |
+| update | OTA A/B arm-bundle (thanh %, rollback) |
 
 ## Kiểm tra deps
 
@@ -113,4 +122,4 @@ Thứ tự: **fat trước → image sau**. Không có file bundle thì `build-s
 PYTHONPATH=. python3 -m cozmars.bootcheck
 ```
 
-WiFi hotspot / portal: [docs/WIFI.md](docs/WIFI.md)
+WiFi hotspot / portal: [docs/WIFI.md](docs/WIFI.md) · OTA từ xa: [docs/UPDATE.md](docs/UPDATE.md)

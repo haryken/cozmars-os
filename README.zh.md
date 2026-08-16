@@ -62,6 +62,15 @@ PYTHONPATH=.deps python3 -m cozmars_sim --host 127.0.0.1 --port 8088
 | **Fat ARM** | `./scripts/pack-fat-docker.sh` | **笔记本 + Docker**（无需 Pi） | 同名 bundle |
 | **SD 镜像** | `./scripts/build-sd-image.sh dist/…-bundle.tgz` | 笔记本 + Docker（必须先有 fat） | `cozmars-<ver>-pi-zero2w.img.xz` |
 
+### 远程 OTA（网页）— 类似 WireOS
+
+完整说明：**[docs/UPDATE.md](docs/UPDATE.md)**
+
+1. 构建 **Fat ARM** → 只用 **`dist/cozmars-<ver>-armhf-bundle.tgz`**（网页不要用 `.img.xz`）。
+2. 把文件放到可 http/https 下载的地址。
+3. 打开机器人网页 → **更新 OS** → 粘贴 URL → 等进度条 + 日志到 **100%**。
+4. A/B 槽：写入空闲槽；中途断电不删当前槽；启动失败自动回滚。
+
 ### A. 有 Pi Zero 2W
 
 ```bash
@@ -105,7 +114,7 @@ cd ~/Projects/cozmars-os
 | switchboard | RPC |
 | wired | Web :80/:8080（sim :8099）、WiFi :8077 |
 | camera | CSI |
-| update | OTA `.tgz` / arm-bundle |
+| update | OTA A/B arm-bundle（进度条、回滚） |
 
 ## 依赖检查
 
@@ -113,4 +122,4 @@ cd ~/Projects/cozmars-os
 PYTHONPATH=. python3 -m cozmars.bootcheck
 ```
 
-WiFi 热点 / 配置页：[docs/WIFI.md](docs/WIFI.md)
+WiFi 热点 / 配置页：[docs/WIFI.md](docs/WIFI.md) · 远程 OTA：[docs/UPDATE.md](docs/UPDATE.md)

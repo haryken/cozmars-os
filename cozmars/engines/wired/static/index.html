@@ -232,18 +232,29 @@
     <div id="ota" class="container mod-section tab-content">
         <h2>Cập nhật OS</h2>
         <div class="help-box">
-            <strong>Cách dùng</strong>
+            <strong>Cách dùng (slot A/B)</strong>
             <ol>
-                <li>Dán URL file <code>.tgz</code> (ví dụ <code>cozmars-1.6.0.tgz</code>).</li>
-                <li>Bấm <b>Cập nhật từ URL</b>.</li>
+                <li>Chỉ dùng file <code>cozmars-*-armhf-bundle.tgz</code> (không dùng <code>.img.xz</code>).</li>
+                <li>Dán URL http/https → bấm cập nhật → đợi thanh tiến trình tới <b>100%</b>.</li>
+                <li>Gói ghi vào <b>slot nghỉ</b>; slot đang chạy không bị xoá. Boot lỗi 3 lần → tự rollback.</li>
             </ol>
+            <p class="help-warn" style="margin-top:8px;"><b>Quan trọng:</b> Chỉ URL OTA chính thức — nguồn lạ dễ làm hỏng robot.</p>
         </div>
+        <div id="otaStatus"></div>
         <div class="xz-config-fields">
-            <label>URL gói:</label>
-            <input type="text" id="otaurl" placeholder="https://…/cozmars-1.6.0.tgz">
+            <label>URL gói arm-bundle:</label>
+            <input type="url" id="otaurl" placeholder="https://…/cozmars-1.6.0-armhf-bundle.tgz">
         </div>
         <div class="xz-config-actions">
-            <button type="button" onclick="ota()">Cập nhật từ URL</button>
+            <button type="button" id="otaStartBtn" onclick="ota()">Cập nhật từ URL</button>
+        </div>
+        <div id="otaProgressWrap" class="ota-progress-wrap">
+            <div class="ota-progress-meta">
+                <span id="otaPhaseLabel">chờ bắt đầu</span>
+                <span id="otaPctLabel">0%</span>
+            </div>
+            <div class="ota-progress-bar"><div id="otaProgressFill" class="ota-progress-fill"></div></div>
+            <div id="otaDetailLine" class="ota-detail">Thanh tiến trình hiện khi đang tải/cài OTA (slot A/B).</div>
         </div>
         <pre id="otalog" class="ota-log">Log cập nhật sẽ hiện ở đây.</pre>
     </div>

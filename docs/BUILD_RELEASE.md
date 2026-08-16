@@ -12,7 +12,7 @@ So sánh:
 - **Fat** — Pi đã có Raspberry Pi OS (flash Imager bình thường), SSH được, rồi nạp một file bundle.
 - **SD image** — giống ý WireOS `.ota`: cả OS trên thẻ; flash xong bật nguồn là robot (splash + hotspot WiFi mở nếu chưa cấu hình).
 
-OTA web (`.tgz` source cũ) vẫn còn; gói `kind=arm-bundle` thì `UpdateEngine` gọi `install-fat` (không pip).
+OTA web: dán URL **arm-bundle** → `UpdateEngine` + `install-fat` ghi **slot A/B nghỉ**, thanh tiến trình tới 100%. Chi tiết: [UPDATE.md](UPDATE.md).
 
 ---
 

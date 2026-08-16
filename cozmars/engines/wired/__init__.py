@@ -43,6 +43,7 @@ class WiredEngine:
             return web.FileResponse(STATIC / "index.html")
 
         async def about(_r):
+            slots = self.update.slot_info() if self.update else {}
             return web.json_response(
                 {
                     "os": "cozmars-os",
@@ -52,6 +53,7 @@ class WiredEngine:
                     "wifi_portal": 8077,
                     "wifi_hotspot_ip": "10.3.141.1",
                     "wifi_hotspot_open": True,
+                    "slots": slots,
                 }
             )
 
@@ -65,6 +67,11 @@ class WiredEngine:
             if not self.update:
                 return web.json_response({"ok": False, "reason": "no update engine"})
             return web.json_response(await self.update.start(url))
+
+        async def api_update_status(_request):
+            if not self.update:
+                return web.json_response({"ok": False, "reason": "no update engine"})
+            return web.json_response(self.update.status())
 
         async def api_voice(request):
             from ..cloud import xiaozhi as xz
@@ -189,6 +196,7 @@ class WiredEngine:
         app.router.add_get("/about", about)
         app.router.add_post("/api/update", api_update)
         app.router.add_get("/api/update", api_update)
+        app.router.add_get("/api/update/status", api_update_status)
         app.router.add_post("/api/voice", api_voice)
         app.router.add_get("/api/xiaozhi", api_xiaozhi)
         app.router.add_post("/api/xiaozhi/activate", api_xiaozhi_activate)

@@ -265,13 +265,139 @@ function xzNewCode() {
 }
 
 async function ota() {
-    const url = document.getElementById("otaurl").value;
-    const j = await defj("/api/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
-    });
-    document.getElementById("otalog").textContent = JSON.stringify(j, null, 2);
+    const input = document.getElementById("otaurl");
+    const url = (input && input.value || "").trim();
+    const btn = document.getElementById("otaStartBtn");
+    const log = document.getElementById("otalog");
+    const statusEl = document.getElementById("otaStatus");
+    if (!url) {
+        if (statusEl) statusEl.innerHTML = "<p style='color:#f87171'>Nhập URL arm-bundle trước.</p>";
+        return;
+    }
+    if (!/^https?:\/\//i.test(url)) {
+        if (statusEl) statusEl.innerHTML = "<p style='color:#f87171'>URL phải http:// hoặc https://</p>";
+        return;
+    }
+    if (!confirm("Cập nhật OS vào slot nghỉ (A/B)? Giữ nguồn ổn định đến 100%.")) return;
+    if (btn) btn.disabled = true;
+    if (log) log.textContent = "";
+    otaSetProgress(0, "starting", url, "");
+    if (statusEl) statusEl.innerHTML = "<p>Đang bắt đầu…</p>";
+    otaLogLine("start " + url);
+    try {
+        const j = await defj("/api/update", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url }),
+        });
+        if (!j || !j.ok) {
+            otaSetProgress(0, "rejected", (j && j.reason) || "fail", "err");
+            if (statusEl) statusEl.innerHTML = "<p style='color:#f87171'>" + ((j && j.reason) || "từ chối") + "</p>";
+            if (btn) btn.disabled = false;
+            return;
+        }
+        otaLogLine("started — polling status");
+        startOtaPoll();
+    } catch (e) {
+        otaSetProgress(0, "error", e.message || String(e), "err");
+        if (btn) btn.disabled = false;
+    }
+}
+
+let otaPollTimer = null;
+let otaFailStreak = 0;
+let otaLastPct = -1;
+
+function otaSetProgress(pct, phase, detail, mode) {
+    const wrap = document.getElementById("otaProgressWrap");
+    if (wrap) wrap.style.display = "block";
+    const fill = document.getElementById("otaProgressFill");
+    const pctEl = document.getElementById("otaPctLabel");
+    const phaseEl = document.getElementById("otaPhaseLabel");
+    const detailEl = document.getElementById("otaDetailLine");
+    const p = Math.max(0, Math.min(100, pct || 0));
+    if (fill) {
+        fill.style.width = p + "%";
+        fill.classList.remove("ok", "err");
+        if (mode === "ok") fill.classList.add("ok");
+        if (mode === "err") fill.classList.add("err");
+    }
+    if (pctEl) pctEl.textContent = p + "%";
+    if (phaseEl) phaseEl.textContent = phase || "—";
+    if (detailEl) detailEl.textContent = detail || "";
+}
+
+function otaLogLine(line) {
+    const box = document.getElementById("otalog");
+    if (!box) return;
+    const t = new Date().toLocaleTimeString();
+    box.textContent += "[" + t + "] " + line + "\n";
+    box.scrollTop = box.scrollHeight;
+}
+
+function startOtaPoll() {
+    if (otaPollTimer) clearInterval(otaPollTimer);
+    otaFailStreak = 0;
+    otaLastPct = -1;
+    otaPollTimer = setInterval(pollOtaStatus, 1000);
+    pollOtaStatus();
+}
+
+function stopOtaPoll() {
+    if (otaPollTimer) clearInterval(otaPollTimer);
+    otaPollTimer = null;
+}
+
+async function pollOtaStatus() {
+    const btn = document.getElementById("otaStartBtn");
+    const statusEl = document.getElementById("otaStatus");
+    try {
+        const j = await defj("/api/update/status");
+        otaFailStreak = 0;
+        const pct = typeof j.percent === "number" ? j.percent : 0;
+        const phase = j.phase || "—";
+        const slots = j.slots || {};
+        let detail = "slot active=" + (slots.active || "?");
+        if (slots.previous) detail += " previous=" + slots.previous;
+        if (j.version) detail += " → " + j.version;
+        if (j.url) detail += " | " + j.url;
+        let mode = "";
+        if (j.error) mode = "err";
+        else if (j.done && !j.error) mode = "ok";
+        otaSetProgress(j.done && !j.error ? 100 : pct, phase, detail, mode);
+        if (pct !== otaLastPct) {
+            otaLogLine(pct + "% " + phase + (j.error ? " ERR " + j.error : ""));
+            otaLastPct = pct;
+        }
+        if (j.error) {
+            if (statusEl) statusEl.innerHTML = "<p style='color:#f87171'>Thất bại: " + j.error + "</p>";
+            stopOtaPoll();
+            if (btn) btn.disabled = false;
+            return;
+        }
+        if (j.done) {
+            if (statusEl) {
+                statusEl.innerHTML = j.sim
+                    ? "<p style='color:#4ade80'>Sim: verify OK (không ghi slot).</p>"
+                    : "<p style='color:#4ade80'>100% — slot mới; service đang restart. F5 sau vài giây.</p>";
+            }
+            stopOtaPoll();
+            if (btn) btn.disabled = false;
+            return;
+        }
+        if (statusEl) statusEl.innerHTML = "<p>Đang cập nhật: " + pct + "% (" + phase + ")</p>";
+    } catch (e) {
+        otaFailStreak += 1;
+        otaLogLine("mất kết nối tạm (" + otaFailStreak + ") — có thể đang restart");
+        if (statusEl) {
+            statusEl.innerHTML = "<p>Mất kết nối (robot có thể đang restart). Giữ trang; F5 sau 1–2 phút.</p>";
+        }
+        if (otaFailStreak >= 10) {
+            stopOtaPoll();
+            otaSetProgress(100, "offline", "Không còn phản hồi — thường là restart xong", "ok");
+            if (btn) btn.disabled = false;
+        }
+    }
 }
 
 async function gnew(n) {

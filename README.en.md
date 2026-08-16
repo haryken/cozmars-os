@@ -62,6 +62,15 @@ Full guide: **[docs/BUILD_RELEASE.md](docs/BUILD_RELEASE.md)**
 | **Fat ARM** | `./scripts/pack-fat-docker.sh` | **Laptop + Docker** (no Pi needed) | same bundle name |
 | **SD image** | `./scripts/build-sd-image.sh dist/…-bundle.tgz` | Laptop + Docker (fat required first) | `cozmars-<ver>-pi-zero2w.img.xz` |
 
+### Remote OTA (web) — WireOS-style
+
+Full guide: **[docs/UPDATE.md](docs/UPDATE.md)**
+
+1. Build **Fat ARM** → use **`dist/cozmars-<ver>-armhf-bundle.tgz`** only (not `.img.xz` on the web UI).
+2. Host the file over http/https.
+3. Robot web → **OS update** → paste URL → wait for progress + log to **100%**.
+4. A/B slots: writes inactive slot; power loss mid-install keeps the running slot; boot failure rolls back.
+
 ### A. You have a Pi Zero 2W
 
 ```bash
@@ -105,7 +114,7 @@ Order: **fat first → then image**. Without a bundle file, `build-sd-image.sh` 
 | switchboard | RPC |
 | wired | Web :80/:8080 (sim :8099), WiFi :8077 |
 | camera | CSI |
-| update | OTA `.tgz` / arm-bundle |
+| update | OTA A/B arm-bundle (progress %, rollback) |
 
 ## Dependency check
 
@@ -113,4 +122,4 @@ Order: **fat first → then image**. Without a bundle file, `build-sd-image.sh` 
 PYTHONPATH=. python3 -m cozmars.bootcheck
 ```
 
-WiFi hotspot / portal: [docs/WIFI.md](docs/WIFI.md)
+WiFi hotspot / portal: [docs/WIFI.md](docs/WIFI.md) · Remote OTA: [docs/UPDATE.md](docs/UPDATE.md)
